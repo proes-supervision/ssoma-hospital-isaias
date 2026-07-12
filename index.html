@@ -450,50 +450,37 @@
             if (!rawJSON) return [];
             if (typeof rawJSON === 'object' && Array.isArray(rawJSON)) return rawJSON;
 
-            // 1. Convertimos a texto puro
             let str = String(rawJSON).trim();
 
+            // Extractor infalible: Busca todo lo que esté entre el primer '[' y el último ']'
+            let match = str.match(/\[.*\]/s);
+            if (!match) return [];
+            
+            str = match[0]; // Aísla la estructura del arreglo
+
             try {
-                // 2. Extractor Quirúrgico: Aisla únicamente el Array, ignorando cualquier texto exterior.
-                let startIdx = str.indexOf('[');
-                let endIdx = str.lastIndexOf(']');
-                
-                if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-                    str = str.substring(startIdx, endIdx + 1);
-                } else {
-                    return []; // No detectó los corchetes de un arreglo
-                }
-
-                // 3. Limpieza profunda de escapes y alteraciones introducidas por Google Sheets
-                str = str.replace(/\\"/g, '"');      // Elimina barras invertidas de escape
-                str = str.replace(/""/g, '"');       // Repara comillas dobles generadas por CSVs
-                str = str.replace(/”|“|’|‘/g, '"');  // Sustituye comillas tipográficas por estándar
-                str = str.replace(/\\n/g, ' ');      // Evita rupturas por saltos de línea internos
-
-                // 4. Intento principal de parseo
+                // Intento 1: Análisis Nativo Directo (Ideal para JSON perfecto)
                 let parsed = JSON.parse(str);
-                
-                // Desenvolver en caso de "Doble Stringify" (común en Apps Script)
-                while (typeof parsed === 'string') {
-                    parsed = JSON.parse(parsed);
-                }
-
+                while (typeof parsed === 'string') parsed = JSON.parse(parsed);
                 if (Array.isArray(parsed)) return parsed;
-
-            } catch (error) {
-                // 5. MOTOR DE RESCATE (Evaluación segura): Si JSON.parse sigue fallando por errores mínimos de sintaxis
+            } catch (e1) {
                 try {
-                    let match = str.match(/\[.*\]/s);
-                    if (match) {
-                        // Utiliza el motor nativo de JavaScript para tolerar formatos JSON imperfectos
-                        let obj = new Function("return " + match[0])();
-                        if (Array.isArray(obj)) return obj;
-                    }
+                    // Intento 2: Limpieza profunda de formato de Google Sheets / CSV
+                    let cleaned = str.replace(/\\"/g, '"').replace(/""/g, '"').replace(/”|“|’|‘/g, '"').replace(/\\n/g, ' ');
+                    let parsed = JSON.parse(cleaned);
+                    while (typeof parsed === 'string') parsed = JSON.parse(parsed);
+                    if (Array.isArray(parsed)) return parsed;
                 } catch (e2) {
-                    console.error("SSOMA Alerta: Imposible parsear los datos de cuadrilla:", str);
+                    try {
+                        // Intento 3: Motor JavaScript Nativo (Tolerancia máxima a fallos de comillas/sintaxis)
+                        let obj = new Function("return " + str)();
+                        if (Array.isArray(obj)) return obj;
+                    } catch (e3) {
+                        console.error("SSOMA Alerta: Imposible parsear cuadrilla, datos gravemente corruptos:", str);
+                    }
                 }
             }
-            return []; // Si todo falla, devuelve arreglo vacío en lugar de crashear el sitio
+            return []; // Si todo falla, evita que la app colapse
         }
 
         // --- MÓDULO: FRENTES DE TRABAJO ---
@@ -503,51 +490,82 @@
             
             try {
                 let fData = [];
+                let allFrentes = [];
                 
                 if(isSimulation) {
-                    fData = simFrentes.filter(f => f.fecha === currentReportDate);
+                    allFrentes = simFrentes;
                 } else {
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`, { cache: "no-store" });
                     
-                    // Mecanismo de defensa por si el servidor devuelve un HTML de error o JSON roto
                     const textData = await res.text(); 
                     let parsedData;
                     try {
                         parsedData = JSON.parse(textData);
                     } catch(e) {
-                        throw new Error("El servidor devolvió datos corruptos. Revise Google Apps Script.");
+                        throw new Error("Respuesta del servidor no es JSON válido.");
                     }
                     
-                    // Filtrado de seguridad Frontend por discrepancia de formatos de fecha
-                    const allFrentes = parsedData.frentes || [];
-                    fData = allFrentes.filter(f => !f.fecha || f.fecha === currentReportDate || f.reportDate === currentReportDate);
+                    // Escaneo Universal: Extraer el array sin importar cómo lo nombre Apps Script
+                    if (Array.isArray(parsedData)) allFrentes = parsedData;
+                    else if (parsedData.frentes && Array.isArray(parsedData.frentes)) allFrentes = parsedData.frentes;
+                    else if (parsedData.data && Array.isArray(parsedData.data)) allFrentes = parsedData.data;
+                    else if (parsedData.records && Array.isArray(parsedData.records)) allFrentes = parsedData.records;
+                    else allFrentes = [parsedData]; // Fallback si devuelve un solo objeto
+                }
+
+                // Filtro de Fechas Ultrasensible (Resuelve conflictos de DD/MM/YYYY vs YYYY-MM-DD)
+                let [cYear, cMonth, cDay] = currentReportDate.split('-');
+                let mNum = parseInt(cMonth).toString(); // "07" -> "7"
+                let dNum = parseInt(cDay).toString();   // "05" -> "5"
+
+                fData = allFrentes.filter(f => {
+                    let fDate = f.fecha || f.reportDate || f.Fecha || f.Date || (Array.isArray(f) ? f[0] : null);
+                    if (!fDate) return true; // Si no hay fecha, lo mostramos
                     
-                    // Fallback: Si el filtro fecha los oculta todos, pero existen datos en el servidor, mostrar todo
-                    if (fData.length === 0 && allFrentes.length > 0) {
-                        fData = allFrentes; 
-                    }
+                    let dStr = String(fDate).trim();
+                    // Verifica si la fecha coincide exactamente o si contiene el Año, Mes y Día en cualquier orden
+                    return dStr.includes(currentReportDate) || 
+                           (dStr.includes(cYear) && (dStr.includes(cMonth) || dStr.includes('/' + mNum + '/')) && (dStr.includes(cDay) || dStr.includes(dNum + '/')));
+                });
+
+                // FALLBACK ABSOLUTO: Si el filtro de fechas oculta TODO, forzamos a mostrar todo el historial.
+                // Esto garantiza que los datos siempre se visualicen.
+                if (fData.length === 0 && allFrentes.length > 0) {
+                    fData = allFrentes;
+                    showNotification("Mostrando todo el historial (No hay coincidencias exactas para hoy)", "info");
                 }
                 
                 tBody.innerHTML = '';
                 let tPers = 0, tHom = 0, tMuj = 0;
 
                 if (fData.length === 0) {
-                    tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400 bg-slate-50">No existen frentes operativos registrados para visualizar.</td></tr>';
+                    tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400 bg-slate-50">No existen frentes operativos registrados en la base de datos.</td></tr>';
                     document.getElementById('total-personal').textContent = 0; 
                     return;
                 }
 
                 fData.forEach(f => {
-                    // Búsqueda inteligente de la columna de trabajadores (A prueba de errores en Sheets)
-                    let raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || f.obreros;
-                    
-                    if (!raw || typeof raw !== 'string' || !raw.includes('[{')) {
-                        // Buscar en todas las propiedades si encontramos un Array de Objetos JSON
-                        for (let k in f) {
-                            let val = String(f[k]);
-                            if (val.includes('[{') && val.includes('}]') && val.includes('"ci"')) { 
-                                raw = f[k]; 
-                                break; 
+                    let raw = '';
+                    let fArea = '-', fAct = '-', fCap = '-', fPerm = '-', fPermDet = '';
+
+                    // Escaneo Universal de Propiedades (Soporta Arrays y Objetos de Sheets)
+                    if (Array.isArray(f)) {
+                        fArea = f[1] || '-'; fAct = f[2] || '-'; fCap = f[3] || '-'; fPerm = f[4] || '-'; fPermDet = f[5] || '';
+                        for (let i = 0; i < f.length; i++) {
+                            if (typeof f[i] === 'string' && f[i].includes('[{') && f[i].includes('"ci"')) { raw = f[i]; break; }
+                        }
+                    } else {
+                        fArea = f.area || f.Area || f.AREA || f.sector || '-';
+                        fAct = f.actividad || f.Actividad || '-';
+                        fCap = f.capataz || f.Capataz || f.responsable || '-';
+                        fPerm = f.permiso || f.Permiso || '-';
+                        fPermDet = f.permiso_detalle || f.Permiso_detalle || '';
+                        
+                        raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || f.obreros || f.cuadrilla || '';
+                        if (!raw || typeof raw !== 'string' || !raw.includes('[{')) {
+                            for (let k in f) {
+                                let val = String(f[k]);
+                                if (val.includes('[{') && val.includes('"ci"')) { raw = val; break; }
                             }
                         }
                     }
@@ -560,9 +578,7 @@
                         trHtml = '<ul class="list-disc list-inside text-[11px] space-y-1">';
                         trabs.forEach(t => {
                             tPers++; 
-                            if(t.genero === 'H' || t.genero === 'Hombre') tHom++; 
-                            else tMuj++;
-                            
+                            if(t.genero === 'H' || t.genero === 'Hombre') tHom++; else tMuj++;
                             let epps = [t.casco?'C':'', t.botas?'B':'', t.guantes?'G':'', t.lentes?'L':''].filter(x=>x).join(',');
                             let allEpps = t.casco && t.botas && t.guantes && t.lentes;
                             let col = allEpps ? 'text-emerald-700 font-medium' : 'text-red-600 font-bold';
@@ -570,23 +586,23 @@
                         });
                         trHtml += '</ul>';
                     } else {
-                        // Si falla, muestra el error de forma controlada sin tumbar la aplicación
+                        // Diagnóstico Visual para el Usuario
                         if (raw && String(raw).length > 5) {
-                            trHtml = `<div class="text-[10px] text-red-500 font-bold mb-1">❌ Datos irreconocibles en la celda:</div>
+                            trHtml = `<div class="text-[10px] text-red-500 font-bold mb-1">❌ Fila sin cuadrilla o JSON roto en Sheets:</div>
                                       <div class="text-[8px] text-slate-400 bg-slate-100 p-1 rounded break-all font-mono">${String(raw).substring(0,50)}...</div>`;
                         } else {
                             trHtml = '<span class="text-xs text-amber-500 font-bold italic">Sin personal asignado</span>';
                         }
                     }
 
-                    const perStr = f.permiso_detalle ? `${f.permiso}<br><span class="text-[10px] font-bold text-amber-600 mt-1 block">${f.permiso_detalle}</span>` : f.permiso;
+                    const perStr = fPermDet ? `${fPerm}<br><span class="text-[10px] font-bold text-amber-600 mt-1 block">${fPermDet}</span>` : fPerm;
 
                     const row = document.createElement('tr'); 
                     row.className = "border-b border-slate-100 hover:bg-slate-50 transition-colors";
                     row.innerHTML = `
-                        <td class="p-3 font-medium text-slate-800">${f.area || '-'}</td>
-                        <td class="p-3 text-slate-600">${f.actividad || '-'}</td>
-                        <td class="p-3 text-slate-700">${f.capataz || '-'}</td>
+                        <td class="p-3 font-medium text-slate-800">${fArea}</td>
+                        <td class="p-3 text-slate-600">${fAct}</td>
+                        <td class="p-3 text-slate-700">${fCap}</td>
                         <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-md font-bold shadow-sm">${trabs.length}</span></td>
                         <td class="p-3">${trHtml}</td>
                         <td class="p-3 text-center text-xs"><span class="bg-slate-100 border border-slate-200 px-2 py-1 rounded-md block">${perStr}</span></td>
