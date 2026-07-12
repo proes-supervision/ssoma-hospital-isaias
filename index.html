@@ -443,8 +443,8 @@
         }
 
         // =========================================================================
-        // PARSER DE CUADRILLA RESILIENTE PARA GOOGLE SHEETS (ACTUALIZADO Y BLINDADO)
-        // Soluciona los problemas de visualización por corrupción de signos y comillas.
+        // PARSER DE CUADRILLA (VERSIÓN CON PATRÓN DUAL-WRITE)
+        // Decodifica desde Base64 preferentemente, con Fallback a JSON roto de Sheets
         // =========================================================================
         function parsearCuadrilla(rawJSON) {
             if (!rawJSON) return [];
@@ -452,35 +452,34 @@
 
             let str = String(rawJSON).trim();
 
-            // Extractor infalible: Busca todo lo que esté entre el primer '[' y el último ']'
-            let match = str.match(/\[.*\]/s);
-            if (!match) return [];
-            
-            str = match[0]; // Aísla la estructura del arreglo
-
-            try {
-                // Intento 1: Análisis Nativo Directo (Ideal para JSON perfecto)
-                let parsed = JSON.parse(str);
-                while (typeof parsed === 'string') parsed = JSON.parse(parsed);
-                if (Array.isArray(parsed)) return parsed;
-            } catch (e1) {
+            // 1. LECTURA EXTREMA (Shadow Column): Desencriptar Base64 si tiene el prefijo
+            if (str.startsWith('B64:')) {
                 try {
-                    // Intento 2: Limpieza profunda de formato de Google Sheets / CSV
-                    let cleaned = str.replace(/\\"/g, '"').replace(/""/g, '"').replace(/”|“|’|‘/g, '"').replace(/\\n/g, ' ');
-                    let parsed = JSON.parse(cleaned);
-                    while (typeof parsed === 'string') parsed = JSON.parse(parsed);
+                    let decodedStr = decodeURIComponent(atob(str.substring(4)));
+                    let parsed = JSON.parse(decodedStr);
                     if (Array.isArray(parsed)) return parsed;
-                } catch (e2) {
-                    try {
-                        // Intento 3: Motor JavaScript Nativo (Tolerancia máxima a fallos de comillas/sintaxis)
-                        let obj = new Function("return " + str)();
-                        if (Array.isArray(obj)) return obj;
-                    } catch (e3) {
-                        console.error("SSOMA Alerta: Imposible parsear cuadrilla, datos gravemente corruptos:", str);
-                    }
+                } catch(err) {
+                    console.error("SSOMA Fallo Extremo: No se pudo desencriptar el Base64:", err);
                 }
             }
-            return []; // Si todo falla, evita que la app colapse
+
+            // 2. FALLBACK LEGACY (Por si lee la columna antigua o registros viejos)
+            let match = str.match(/\[.*\]/s);
+            if (!match) return [];
+            str = match[0]; 
+            
+            try {
+                let cleaned = str.replace(/\\"/g, '"').replace(/""/g, '"').replace(/”|“|’|‘/g, '"').replace(/\\n/g, ' ');
+                let parsed = JSON.parse(cleaned);
+                while (typeof parsed === 'string') parsed = JSON.parse(parsed);
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e2) {
+                try {
+                    let obj = new Function("return " + str)();
+                    if (Array.isArray(obj)) return obj;
+                } catch (e3) { }
+            }
+            return [];
         }
 
         // --- MÓDULO: FRENTES DE TRABAJO ---
@@ -496,7 +495,6 @@
                     allFrentes = simFrentes;
                 } else {
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`, { cache: "no-store" });
-                    
                     const textData = await res.text(); 
                     let parsedData;
                     try {
@@ -505,31 +503,28 @@
                         throw new Error("Respuesta del servidor no es JSON válido.");
                     }
                     
-                    // Escaneo Universal: Extraer el array sin importar cómo lo nombre Apps Script
                     if (Array.isArray(parsedData)) allFrentes = parsedData;
                     else if (parsedData.frentes && Array.isArray(parsedData.frentes)) allFrentes = parsedData.frentes;
                     else if (parsedData.data && Array.isArray(parsedData.data)) allFrentes = parsedData.data;
                     else if (parsedData.records && Array.isArray(parsedData.records)) allFrentes = parsedData.records;
-                    else allFrentes = [parsedData]; // Fallback si devuelve un solo objeto
+                    else allFrentes = [parsedData];
                 }
 
-                // Filtro de Fechas Ultrasensible (Resuelve conflictos de DD/MM/YYYY vs YYYY-MM-DD)
+                // Filtro de Fechas
                 let [cYear, cMonth, cDay] = currentReportDate.split('-');
-                let mNum = parseInt(cMonth).toString(); // "07" -> "7"
-                let dNum = parseInt(cDay).toString();   // "05" -> "5"
+                let mNum = parseInt(cMonth).toString();
+                let dNum = parseInt(cDay).toString();
 
                 fData = allFrentes.filter(f => {
                     let fDate = f.fecha || f.reportDate || f.Fecha || f.Date || (Array.isArray(f) ? f[0] : null);
-                    if (!fDate) return true; // Si no hay fecha, lo mostramos
+                    if (!fDate) return true;
                     
                     let dStr = String(fDate).trim();
-                    // Verifica si la fecha coincide exactamente o si contiene el Año, Mes y Día en cualquier orden
                     return dStr.includes(currentReportDate) || 
                            (dStr.includes(cYear) && (dStr.includes(cMonth) || dStr.includes('/' + mNum + '/')) && (dStr.includes(cDay) || dStr.includes(dNum + '/')));
                 });
 
-                // FALLBACK ABSOLUTO: Si el filtro de fechas oculta TODO, forzamos a mostrar todo el historial.
-                // Esto garantiza que los datos siempre se visualicen.
+                // FALLBACK ABSOLUTO
                 if (fData.length === 0 && allFrentes.length > 0) {
                     fData = allFrentes;
                     showNotification("Mostrando todo el historial (No hay coincidencias exactas para hoy)", "info");
@@ -548,11 +543,19 @@
                     let raw = '';
                     let fArea = '-', fAct = '-', fCap = '-', fPerm = '-', fPermDet = '';
 
-                    // Escaneo Universal de Propiedades (Soporta Arrays y Objetos de Sheets)
+                    // Escaneo Universal con Prioridad a la nueva columna "B64"
                     if (Array.isArray(f)) {
                         fArea = f[1] || '-'; fAct = f[2] || '-'; fCap = f[3] || '-'; fPerm = f[4] || '-'; fPermDet = f[5] || '';
+                        
+                        // Prioridad 1: Buscar Base64
                         for (let i = 0; i < f.length; i++) {
-                            if (typeof f[i] === 'string' && f[i].includes('[{') && f[i].includes('"ci"')) { raw = f[i]; break; }
+                            if (String(f[i]).startsWith('B64:')) { raw = f[i]; break; }
+                        }
+                        // Prioridad 2: Buscar JSON antiguo si no hay Base64
+                        if (!raw) {
+                            for (let i = 0; i < f.length; i++) {
+                                if (String(f[i]).includes('[{') && String(f[i]).includes('"ci"')) { raw = f[i]; break; }
+                            }
                         }
                     } else {
                         fArea = f.area || f.Area || f.AREA || f.sector || '-';
@@ -561,16 +564,27 @@
                         fPerm = f.permiso || f.Permiso || '-';
                         fPermDet = f.permiso_detalle || f.Permiso_detalle || '';
                         
-                        raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || f.obreros || f.cuadrilla || '';
-                        if (!raw || typeof raw !== 'string' || !raw.includes('[{')) {
+                        // Prioridad 1: Campo exacto b64
+                        raw = f.trabajadores_b64 || f.Trabajadores_b64 || '';
+                        
+                        // Prioridad 2: Escanear todas las llaves buscando B64
+                        if (!raw || !String(raw).startsWith('B64:')) {
                             for (let k in f) {
-                                let val = String(f[k]);
-                                if (val.includes('[{') && val.includes('"ci"')) { raw = val; break; }
+                                if (String(f[k]).startsWith('B64:')) { raw = f[k]; break; }
+                            }
+                        }
+
+                        // Prioridad 3: Fallback a la columna original de JSON
+                        if (!raw) {
+                            raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || '';
+                            if (!raw || (!raw.startsWith('B64:') && !raw.includes('[{'))) {
+                                for (let k in f) {
+                                    if (String(f[k]).includes('[{') && String(f[k]).includes('"ci"')) { raw = f[k]; break; }
+                                }
                             }
                         }
                     }
 
-                    // Extracción con el motor blindado
                     let trabs = parsearCuadrilla(raw);
                     let trHtml = '';
 
@@ -586,7 +600,6 @@
                         });
                         trHtml += '</ul>';
                     } else {
-                        // Diagnóstico Visual para el Usuario
                         if (raw && String(raw).length > 5) {
                             trHtml = `<div class="text-[10px] text-red-500 font-bold mb-1">❌ Fila sin cuadrilla o JSON roto en Sheets:</div>
                                       <div class="text-[8px] text-slate-400 bg-slate-100 p-1 rounded break-all font-mono">${String(raw).substring(0,50)}...</div>`;
@@ -610,7 +623,6 @@
                     tBody.appendChild(row);
                 });
                 
-                // Actualizar Dashboard KPI
                 document.getElementById('total-personal').textContent = tPers;
                 document.getElementById('total-hombres').textContent = tHom;
                 document.getElementById('total-mujeres').textContent = tMuj;
@@ -666,7 +678,7 @@
             });
         }
 
-        // Subida de datos (Post Frontend)
+        // Subida de datos: PATRÓN DUAL-WRITE
         document.getElementById('form-diario').addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!trabajadoresEnFormulario.length) return showNotification("Imposible registrar un frente sin personal asignado", 'error');
@@ -683,6 +695,12 @@
             btn.innerHTML = '<span class="animate-spin mr-2">⚙</span> Procesando...';
 
             try {
+                // 1. VERSIÓN LEGIBLE (Para Auditoría en Sheets)
+                const jsonLegible = JSON.stringify(trabajadoresEnFormulario);
+                
+                // 2. VERSIÓN SEGURA (Para que la app lo lea sin romperse)
+                const stringBase64 = "B64:" + btoa(encodeURIComponent(jsonLegible));
+
                 const payload = {
                     action: 'addFrente', 
                     reportDate: document.getElementById('report-date').value,
@@ -691,7 +709,8 @@
                     capataz: nCap, 
                     permiso: p_tipo, 
                     permiso_detalle: p_det,
-                    trabajadores_json: JSON.stringify(trabajadoresEnFormulario)
+                    trabajadores_json: jsonLegible,  // Se guarda normal para que lo puedas ver en Excel
+                    trabajadores_b64: stringBase64   // Se guarda encriptado para que la App no falle
                 };
 
                 if (isSimulation) simFrentes.push({fecha: payload.reportDate, ...payload});
@@ -711,7 +730,6 @@
                 
                 showNotification("Frente estructurado en el sistema correctamente", "success"); 
                 
-                // Retraso intencional para asegurar consistencia eventual en la base de datos de Google Sheets
                 setTimeout(() => { loadDailyReports(); }, 2000);
 
             } catch (err) { 
