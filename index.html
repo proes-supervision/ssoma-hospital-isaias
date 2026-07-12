@@ -336,42 +336,52 @@
             loadDailyReports(); loadEventLog();
         }
 
-        function extractJSONInmune(raw) {
-            if (!raw) return [];
-            if (Array.isArray(raw)) return raw;
-            if (typeof raw === 'object') return [raw];
-            try {
-                let s = String(raw).trim();
-                // Destruir comillas extra que Sheets inyecta a veces
-                if (s.startsWith('"') && s.endsWith('"')) {
-                    s = s.substring(1, s.length - 1).replace(/\\"/g, '"');
+        // =========================================================================
+        // MOTOR DE EXTRACCIÓN INMUNE A LA CORRUPCIÓN DE FORMATO DE GOOGLE SHEETS
+        // =========================================================================
+        function robustWorkerParse(fRow) {
+            // 1. Rastreo Inteligente: Buscar en todas las columnas de la fila recibida
+            let raw = fRow.trabajadores_json;
+            if (!raw || String(raw).indexOf('[{') === -1) {
+                for (let k in fRow) {
+                    if (String(fRow[k]).indexOf('[{') !== -1) {
+                        raw = fRow[k]; break;
+                    }
                 }
-                if(s === '""' || s === "''") return [];
-                
-                // Encontrar los corchetes que envuelven el array
-                const primerCorchete = s.indexOf('[');
-                const ultimoCorchete = s.lastIndexOf(']');
-                
-                if (primerCorchete !== -1 && ultimoCorchete !== -1) {
-                    let arrayStr = s.substring(primerCorchete, ultimoCorchete + 1);
-                    let obj = JSON.parse(arrayStr);
-                    // Doble validación
-                    if (typeof obj === 'string') obj = JSON.parse(obj);
-                    return Array.isArray(obj) ? obj : [];
-                }
-            } catch (e) {
-                console.error("Fallo al interpretar obreros:", e, raw);
             }
-            return [];
+            if (!raw) return { list: [], errorStr: null };
+            if (Array.isArray(raw)) return { list: raw, errorStr: null };
+
+            // 2. Extracción de Fuerza Bruta
+            let s = String(raw).trim();
+            let i1 = s.indexOf('[{');
+            let i2 = s.lastIndexOf('}]');
+            
+            if (i1 !== -1 && i2 !== -1) {
+                let json = s.substring(i1, i2 + 2);
+                try {
+                    // Intento A: Normal
+                    return { list: JSON.parse(json), errorStr: null };
+                } catch(e) {
+                    try {
+                        // Intento B: Si Sheets borró o arruinó las comillas, eval() forzará la lectura como JavaScript puro
+                        let arrayObj = new Function("return " + json)();
+                        if (Array.isArray(arrayObj)) return { list: arrayObj, errorStr: null };
+                    } catch(e2) {
+                        return { list: [], errorStr: json }; // Devolver el texto roto para mostrarlo en pantalla
+                    }
+                }
+            }
+            return { list: [], errorStr: s }; 
         }
 
         async function loadDailyReports() {
             const tBody = document.getElementById('report-table-body');
-            tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 font-semibold">Descargando datos...</td></tr>';
+            tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 font-semibold animate-pulse">Sincronizando datos con el servidor...</td></tr>';
             try {
                 let fData = simFrentes.filter(f => f.fecha === currentReportDate);
                 if(!isSimulation) {
-                    // Cache Buster
+                    // Cache Buster: &t=Date.now() obliga al navegador móvil a soltar el caché viejo
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`, { cache: "no-store" });
                     const data = await res.json(); 
                     fData = data.frentes || [];
@@ -386,11 +396,13 @@
                 }
 
                 fData.forEach(f => {
-                    // Extraer los trabajadores usando el extractor inmune
-                    let trabs = extractJSONInmune(f.trabajadores_json);
+                    // Llamar al motor extractor inmune
+                    let parsedData = robustWorkerParse(f);
+                    let trabs = parsedData.list;
+                    let rawError = parsedData.errorStr;
                     
                     let trHtml = '';
-                    if (trabs.length > 0) {
+                    if (trabs && trabs.length > 0) {
                         trHtml = '<ul class="list-disc list-inside text-[11px] space-y-1">';
                         trabs.forEach(t => {
                             tPers++; if(t.genero==='H') tHom++; else tMuj++;
@@ -402,6 +414,9 @@
                             trHtml += `<li class="${col}">${t.nombre} [${strEpp}]</li>`;
                         });
                         trHtml += '</ul>';
+                    } else if (rawError) {
+                        // SISTEMA ANTI-CIEGOS: Si falla, te mostrará la basura que mandó Google Sheets
+                        trHtml = `<span class="text-[10px] text-red-500 font-bold break-all">Error. Sheets devolvió: ${rawError.substring(0, 40)}...</span>`;
                     } else {
                         trHtml = '<span class="text-xs text-red-500 font-bold">Sin personal en cuadrilla</span>';
                     }
@@ -410,10 +425,10 @@
 
                     const row = document.createElement('tr'); row.className = "border-b border-slate-100 hover:bg-slate-50";
                     row.innerHTML = `
-                        <td class="p-3 font-medium text-slate-800">${f.area}</td>
-                        <td class="p-3 text-slate-600">${f.actividad}</td>
-                        <td class="p-3 text-slate-700">${f.capataz}</td>
-                        <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${trabs.length}</span></td>
+                        <td class="p-3 font-medium text-slate-800">${f.area || '-'}</td>
+                        <td class="p-3 text-slate-600">${f.actividad || '-'}</td>
+                        <td class="p-3 text-slate-700">${f.capataz || '-'}</td>
+                        <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${trabs ? trabs.length : 0}</span></td>
                         <td class="p-3">${trHtml}</td>
                         <td class="p-3 text-center text-xs"><span class="bg-slate-100 border px-2 py-1 rounded block">${perStr}</span></td>
                     `;
@@ -424,7 +439,7 @@
                 document.getElementById('total-hombres').textContent = tHom;
                 document.getElementById('total-mujeres').textContent = tMuj;
             } catch (e) { 
-                tBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Error de sincronización de datos. Revise su red.</td></tr>`; 
+                tBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Fallo en la comunicación con el servidor.</td></tr>`; 
             }
         }
 
@@ -486,10 +501,11 @@
                 e.target.reset(); trabajadoresEnFormulario=[]; renderWorkers();
                 document.getElementById('permiso_especifico_container').classList.add('hidden');
                 toggleForm('form-diario-container', false);
-                showNotification("Guardado Correctamente. Sincronizando...", "success"); 
                 
-                // Forzar pausa vital para que Google Sheets procese el texto
-                setTimeout(() => { loadDailyReports(); }, 1800);
+                showNotification("Guardando y Sincronizando datos...", "success"); 
+                
+                // ESPERA DE 2.5 SEGUNDOS (2500ms) PARA ASEGURAR QUE GOOGLE TERMINE DE GRABAR LA CELDA
+                setTimeout(() => { loadDailyReports(); }, 2500);
 
             } catch (err) { showNotification("Fallo de Red.", "error"); } finally { btn.disabled=false; }
         });
