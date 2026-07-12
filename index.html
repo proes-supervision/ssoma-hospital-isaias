@@ -443,8 +443,8 @@
         }
 
         // =========================================================================
-        // PARSER DE CUADRILLA (VERSIÓN CON PATRÓN DUAL-WRITE)
-        // Decodifica desde Base64 preferentemente, con Fallback a JSON roto de Sheets
+        // PARSER DE CUADRILLA: TÁCTICA DEL CABALLO DE TROYA (TROJAN HORSE)
+        // Extrae el B64 seguro o el JSON normal de la misma cadena de texto.
         // =========================================================================
         function parsearCuadrilla(rawJSON) {
             if (!rawJSON) return [];
@@ -452,18 +452,28 @@
 
             let str = String(rawJSON).trim();
 
-            // 1. LECTURA EXTREMA (Shadow Column): Desencriptar Base64 si tiene el prefijo
+            // 1. LECTURA DEL CABALLO DE TROYA: Separar el B64 del JSON Legible
+            if (str.includes('B64:') && str.includes('|||')) {
+                try {
+                    let b64Part = str.split('|||')[0].trim();
+                    let decodedStr = decodeURIComponent(atob(b64Part.substring(4)));
+                    let parsed = JSON.parse(decodedStr);
+                    if (Array.isArray(parsed)) return parsed;
+                } catch(err) {
+                    console.error("SSOMA Fallo Extremo: No se pudo desencriptar el Caballo de Troya:", err);
+                }
+            }
+
+            // 2. LECTURA B64 PURO (Por compatibilidad con los registros de los últimos 10 minutos)
             if (str.startsWith('B64:')) {
                 try {
                     let decodedStr = decodeURIComponent(atob(str.substring(4)));
                     let parsed = JSON.parse(decodedStr);
                     if (Array.isArray(parsed)) return parsed;
-                } catch(err) {
-                    console.error("SSOMA Fallo Extremo: No se pudo desencriptar el Base64:", err);
-                }
+                } catch(err) {}
             }
 
-            // 2. FALLBACK LEGACY (Por si lee la columna antigua o registros viejos)
+            // 3. FALLBACK LEGACY (Por si lee la columna antigua o registros viejos)
             let match = str.match(/\[.*\]/s);
             if (!match) return [];
             str = match[0]; 
@@ -543,19 +553,13 @@
                     let raw = '';
                     let fArea = '-', fAct = '-', fCap = '-', fPerm = '-', fPermDet = '';
 
-                    // Escaneo Universal con Prioridad a la nueva columna "B64"
+                    // Escaneo Universal buscando el Caballo de Troya (B64) o el JSON original
                     if (Array.isArray(f)) {
                         fArea = f[1] || '-'; fAct = f[2] || '-'; fCap = f[3] || '-'; fPerm = f[4] || '-'; fPermDet = f[5] || '';
                         
-                        // Prioridad 1: Buscar Base64
                         for (let i = 0; i < f.length; i++) {
-                            if (String(f[i]).startsWith('B64:')) { raw = f[i]; break; }
-                        }
-                        // Prioridad 2: Buscar JSON antiguo si no hay Base64
-                        if (!raw) {
-                            for (let i = 0; i < f.length; i++) {
-                                if (String(f[i]).includes('[{') && String(f[i]).includes('"ci"')) { raw = f[i]; break; }
-                            }
+                            let val = String(f[i]);
+                            if (val.includes('B64:') || (val.includes('[{') && val.includes('"ci"'))) { raw = val; break; }
                         }
                     } else {
                         fArea = f.area || f.Area || f.AREA || f.sector || '-';
@@ -564,23 +568,13 @@
                         fPerm = f.permiso || f.Permiso || '-';
                         fPermDet = f.permiso_detalle || f.Permiso_detalle || '';
                         
-                        // Prioridad 1: Campo exacto b64
-                        raw = f.trabajadores_b64 || f.Trabajadores_b64 || '';
+                        raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || '';
                         
-                        // Prioridad 2: Escanear todas las llaves buscando B64
-                        if (!raw || !String(raw).startsWith('B64:')) {
+                        // Si no lo encuentra en las variables obvias, escanea todo el objeto
+                        if (!raw || (!String(raw).includes('B64:') && !String(raw).includes('[{'))) {
                             for (let k in f) {
-                                if (String(f[k]).startsWith('B64:')) { raw = f[k]; break; }
-                            }
-                        }
-
-                        // Prioridad 3: Fallback a la columna original de JSON
-                        if (!raw) {
-                            raw = f.trabajadores_json || f.trabajadores || f.Personal || f.personal || '';
-                            if (!raw || (!raw.startsWith('B64:') && !raw.includes('[{'))) {
-                                for (let k in f) {
-                                    if (String(f[k]).includes('[{') && String(f[k]).includes('"ci"')) { raw = f[k]; break; }
-                                }
+                                let val = String(f[k]);
+                                if (val.includes('B64:') || (val.includes('[{') && val.includes('"ci"'))) { raw = val; break; }
                             }
                         }
                     }
@@ -678,7 +672,7 @@
             });
         }
 
-        // Subida de datos: PATRÓN DUAL-WRITE
+        // Subida de datos: PATRÓN CABALLO DE TROYA (Ambos datos en 1 sola columna)
         document.getElementById('form-diario').addEventListener('submit', async (e) => {
             e.preventDefault();
             if(!trabajadoresEnFormulario.length) return showNotification("Imposible registrar un frente sin personal asignado", 'error');
@@ -695,11 +689,15 @@
             btn.innerHTML = '<span class="animate-spin mr-2">⚙</span> Procesando...';
 
             try {
-                // 1. VERSIÓN LEGIBLE (Para Auditoría en Sheets)
+                // 1. JSON puro (Legible para el humano en Excel)
                 const jsonLegible = JSON.stringify(trabajadoresEnFormulario);
                 
-                // 2. VERSIÓN SEGURA (Para que la app lo lea sin romperse)
+                // 2. Base64 Seguro (Legible para la máquina sin corromperse)
                 const stringBase64 = "B64:" + btoa(encodeURIComponent(jsonLegible));
+                
+                // 3. LA MAGIA: Unimos ambos con un separador '|||'
+                // Esto se enviará en la ÚNICA columna que tu Sheets ya acepta ('trabajadores_json')
+                const caballoDeTroya = stringBase64 + " ||| " + jsonLegible;
 
                 const payload = {
                     action: 'addFrente', 
@@ -709,8 +707,7 @@
                     capataz: nCap, 
                     permiso: p_tipo, 
                     permiso_detalle: p_det,
-                    trabajadores_json: jsonLegible,  // Se guarda normal para que lo puedas ver en Excel
-                    trabajadores_b64: stringBase64   // Se guarda encriptado para que la App no falle
+                    trabajadores_json: caballoDeTroya // El backend no sabrá que le enviamos dos cosas en una
                 };
 
                 if (isSimulation) simFrentes.push({fecha: payload.reportDate, ...payload});
