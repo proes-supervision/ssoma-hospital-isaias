@@ -178,7 +178,6 @@
                                 <p class="text-xs text-slate-500">Añada a toda la cuadrilla para que ingresen a la estadística.</p>
                             </div>
                             
-                            <!-- CAJA CORREGIDA PARA PC Y MÓVILES (Uso de GRID estricto para evitar desbordes) -->
                             <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200 mb-4">
                                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
                                     <!-- Selección de Personal -->
@@ -588,7 +587,6 @@
             try {
                 let fData = simFrentes.filter(f => f.fecha === currentReportDate);
                 if(!isSimulation) {
-                    // CORRECCIÓN: Se añade timestamp &t=... para EVITAR EL CACHÉ DEL NAVEGADOR
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`);
                     const data = await res.json(); fData = data.frentes || [];
                 } else await new Promise(r => setTimeout(r, 200));
@@ -599,13 +597,28 @@
                 if (fData.length === 0) tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400 text-xs italic bg-slate-50">No hay frentes registrados hoy.</td></tr>';
 
                 fData.forEach(f => {
-                    // CORRECCIÓN: Parseo de datos seguro para evitar que el programa choque con celdas vacías
                     let trabs = [];
+                    let raw = f.trabajadores_json;
+                    
+                    // RASTREADOR INTELIGENTE: Si las columnas de Google Sheets se desfasaron, 
+                    // esta función busca la Cuadrilla en TODAS las columnas.
+                    if (!raw || (typeof raw === 'string' && !raw.includes('[{'))) {
+                        for (let key in f) {
+                            if (typeof f[key] === 'string' && f[key].includes('[{') && f[key].includes('}]')) {
+                                raw = f[key];
+                                break;
+                            }
+                        }
+                    }
+
                     try {
-                        let raw = f.trabajadores_json;
-                        if (typeof raw === 'string' && raw.trim() !== '') {
-                            trabs = JSON.parse(raw);
-                            if (typeof trabs === 'string') trabs = JSON.parse(trabs); 
+                        if (typeof raw === 'string' && raw.includes('[{')) {
+                            // Extrae exclusivamente el código JSON limpiando basura exterior si la hubiera
+                            let match = raw.match(/\[[\s\S]*\]/);
+                            if (match) {
+                                trabs = JSON.parse(match[0]);
+                                if (typeof trabs === 'string') trabs = JSON.parse(trabs); 
+                            }
                         } else if (Array.isArray(raw)) {
                             trabs = raw;
                         }
@@ -630,15 +643,15 @@
                         });
                         trHtml += '</ul>';
                     } else {
-                        trHtml = '<span class="text-xs text-slate-400 italic">Sin personal registrado</span>';
+                        trHtml = '<span class="text-xs text-slate-400 italic">Sin personal registrado en cuadrilla</span>';
                     }
 
-                    let perStr = f.permiso;
+                    let perStr = f.permiso || "No aplica";
                     if(f.permiso === 'Específico' && f.permiso_detalle) perStr += `<br><span class="text-[10px] text-amber-600 font-bold">${f.permiso_detalle}</span>`;
                     
                     row.innerHTML = `
-                        <td class="p-3 text-slate-800 font-medium">${f.area}</td>
-                        <td class="p-3 text-slate-600">${f.actividad}</td>
+                        <td class="p-3 text-slate-800 font-medium">${f.area || '-'}</td>
+                        <td class="p-3 text-slate-600">${f.actividad || '-'}</td>
                         <td class="p-3 text-slate-700">${f.capataz || 'No definido'}</td>
                         <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded">${trabs.length}</span></td>
                         <td class="p-3">${trHtml}</td>
@@ -725,9 +738,14 @@
                 e.target.reset(); trabajadoresEnFormulario=[]; renderWorkers();
                 document.getElementById('permiso_especifico_container').classList.add('hidden');
                 toggleForm('form-diario-container', false);
+                
                 showNotification("Frente Guardado Exitosamente", "success"); 
-                // Recargar datos inmediatamente para ver los cambios
-                loadDailyReports();
+                
+                // RETRASO DE SINCRONIZACIÓN: Esperamos un poco para que Google Sheets termine de guardar la celda antes de pedir la lectura nueva.
+                setTimeout(() => {
+                    loadDailyReports();
+                }, 1200); 
+
             } catch (err) { showNotification("Error al guardar. Revise la red.", "error"); } finally { btn.disabled=false; }
         });
 
@@ -790,7 +808,11 @@
                 }
                 
                 e.target.reset(); document.getElementById('evento_opciones_dinamicas').classList.add('hidden');
-                toggleForm('form-evento-container', false); showNotification("Bitácora Guardada Exitosamente", "success"); loadEventLog();
+                toggleForm('form-evento-container', false); 
+                showNotification("Bitácora Guardada Exitosamente", "success"); 
+                
+                setTimeout(() => { loadEventLog(); }, 1200);
+
             } catch (err) { showNotification(err, 'error'); } finally { btn.disabled = false; }
         });
 
@@ -832,7 +854,6 @@
                 ];
             } else if (!isSimulation) {
                 try {
-                    // Evitar Caché del Navegador
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getTrabajadores&t=${Date.now()}`);
                     const data = await res.json(); dbTrabajadores = data.trabajadores || [];
                 } catch(e) { console.log(e); }
@@ -873,7 +894,10 @@
                     }); 
                 }
                 
-                e.target.reset(); showNotification("Personal Registrado", "success"); loadTrabajadores();
+                e.target.reset(); 
+                showNotification("Personal Registrado", "success"); 
+                setTimeout(() => { loadTrabajadores(); }, 1200);
+
             } catch(e) { showNotification("Error guardando trabajador", "error"); } finally { btn.disabled=false; }
         });
 
@@ -894,7 +918,6 @@
             let fr = [];
             if(isSimulation) { fr = simFrentes.filter(f => f.fecha >= s && f.fecha <= e); }
             else {
-                // Evitar Caché
                 const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentesRango&start=${s}&end=${e}&t=${Date.now()}`);
                 const data = await res.json(); fr = data.frentes || [];
             }
@@ -902,12 +925,27 @@
             let map = new Map(), h=0, m=0, et = {};
             fr.forEach(f => {
                 let tr = [];
+                let raw = f.trabajadores_json;
+                
+                // RASTREADOR DE JSON PARA ESTADISTICAS
+                if (!raw || (typeof raw === 'string' && !raw.includes('[{'))) {
+                    for (let key in f) {
+                        if (typeof f[key] === 'string' && f[key].includes('[{') && f[key].includes('}]')) {
+                            raw = f[key];
+                            break;
+                        }
+                    }
+                }
+
                 try {
-                    if (typeof f.trabajadores_json === 'string') {
-                        tr = f.trabajadores_json.trim() ? JSON.parse(f.trabajadores_json) : [];
-                        if (typeof tr === 'string') tr = JSON.parse(tr);
-                    } else if (Array.isArray(f.trabajadores_json)) {
-                        tr = f.trabajadores_json;
+                    if (typeof raw === 'string' && raw.includes('[{')) {
+                        let match = raw.match(/\[[\s\S]*\]/);
+                        if(match) {
+                            tr = JSON.parse(match[0]);
+                            if(typeof tr === 'string') tr = JSON.parse(tr);
+                        }
+                    } else if (Array.isArray(raw)) {
+                        tr = raw;
                     }
                 } catch(err) {}
 
