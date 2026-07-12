@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión Integral de SSOMA - Proyecto Oruro</title>
+    <title>Gestión Integral de SSOMA - Hospital Isaías</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
@@ -12,22 +12,17 @@
         body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-spin { display: inline-block; animation: spin 1s linear infinite; }
-        
         td { white-space: normal !important; word-break: break-word; }
         table { width: 100%; table-layout: auto; }
-        
         nav::-webkit-scrollbar { display: none; }
         nav { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Estilos específicos para la exportación a PDF (Tamaño Carta Vertical) */
         .pdf-mode { font-size: 8px !important; width: 100% !important; background: white !important; padding: 10px !important; }
         .pdf-mode h2, .pdf-mode h3 { font-size: 11px !important; margin-bottom: 4px !important; color: #1e293b !important; }
         .pdf-mode p, .pdf-mode span, .pdf-mode td, .pdf-mode th { font-size: 8px !important; }
         .pdf-mode table th, .pdf-mode table td { padding: 4px !important; }
         .pdf-mode .no-print { display: none !important; }
-        .pdf-mode .shadow-sm, .pdf-mode .shadow-lg, .pdf-mode .shadow-md { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+        .pdf-mode .shadow-sm { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
         .pdf-mode input, .pdf-mode select, .pdf-mode button { display: none !important; }
-        .overflow-x-auto { overflow: visible !important; }
     </style>
 </head>
 <body id="app-body" class="text-slate-800 flex flex-col min-h-screen">
@@ -35,18 +30,15 @@
     <div id="login-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 no-print">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
             <div class="bg-slate-800 p-4 text-center border-b border-slate-700">
-                <h3 class="text-white font-bold text-lg flex items-center justify-center gap-2">
-                    <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
-                    Ingreso Restringido
-                </h3>
+                <h3 class="text-white font-bold text-lg flex items-center justify-center gap-2">Ingreso Restringido</h3>
             </div>
             <div class="p-6">
-                <p class="text-sm text-slate-600 mb-4 text-center">Ingrese el PIN de seguridad del Contratista para habilitar los formularios de registro.</p>
-                <input type="password" id="pin-input" onkeydown="if(event.key === 'Enter') verifyPin()" class="w-full rounded-lg border-slate-300 bg-slate-50 text-center text-2xl tracking-[0.3em] py-3 focus:ring-indigo-500 focus:border-indigo-500 font-bold text-slate-800 shadow-inner" placeholder="••••••••">
+                <p class="text-sm text-slate-600 mb-4 text-center">Ingrese el PIN de seguridad del Contratista.</p>
+                <input type="password" id="pin-input" onkeydown="if(event.key === 'Enter') verifyPin()" class="w-full rounded-lg border-slate-300 bg-slate-50 text-center text-2xl tracking-[0.3em] py-3 focus:ring-indigo-500 font-bold" placeholder="••••••••">
                 <p id="pin-error" class="hidden text-red-500 text-xs mt-2 text-center font-bold">PIN incorrecto. Intente de nuevo.</p>
                 <div class="flex gap-3 mt-6">
-                    <button onclick="closeLoginModal()" class="flex-1 bg-white border border-slate-300 text-slate-700 py-2.5 rounded-lg hover:bg-slate-50 font-medium text-sm transition">Cancelar</button>
-                    <button onclick="verifyPin()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg hover:bg-indigo-700 font-medium text-sm transition shadow-sm">Acceder</button>
+                    <button onclick="closeLoginModal()" class="flex-1 bg-white border border-slate-300 py-2.5 rounded-lg text-sm font-medium">Cancelar</button>
+                    <button onclick="verifyPin()" class="flex-1 bg-indigo-600 text-white py-2.5 rounded-lg text-sm font-medium">Acceder</button>
                 </div>
             </div>
         </div>
@@ -59,135 +51,105 @@
                 <p class="text-sm md:text-base text-slate-500 mt-1 font-medium">Proyecto: Construcción Hospital de Segundo Nivel Isaías - Oruro</p>
             </div>
             <div class="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                <button id="btn-login-contratista" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2.5 px-5 rounded-lg shadow-sm transition-all flex items-center gap-2 justify-center">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                <button id="btn-login-contratista" class="bg-slate-800 hover:bg-slate-700 text-white text-sm font-semibold py-2.5 px-5 rounded-lg transition-all">
                     <span id="login-text">Acceso Contratista</span>
                 </button>
-                <button onclick="exportToPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2.5 px-5 rounded-lg shadow-sm transition-all flex items-center gap-2 justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Exportar Reporte a PDF
-                </button>
+                <button onclick="exportToPDF()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold py-2.5 px-5 rounded-lg transition-all">Exportar Reporte a PDF</button>
             </div>
         </header>
 
         <div id="pdf-content-area" class="space-y-6">
+            
             <section class="mb-6">
                 <h2 class="text-lg font-bold text-slate-800 mb-3 no-print">Resumen del Día</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-600 flex flex-col justify-between">
-                        <h3 class="text-xs font-bold tracking-wider text-slate-500 uppercase">Personal en Frentes</h3>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-indigo-600">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase">Personal en Frentes</h3>
                         <p id="total-personal" class="text-3xl font-black text-slate-800 mt-2">0</p>
                     </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-cyan-500 flex flex-col justify-between">
-                        <h3 class="text-xs font-bold tracking-wider text-slate-500 uppercase">Hombres</h3>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-cyan-500">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase">Hombres</h3>
                         <p id="total-hombres" class="text-3xl font-black text-slate-800 mt-2">0</p>
                     </div>
-                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-pink-500 flex flex-col justify-between">
-                        <h3 class="text-xs font-bold tracking-wider text-slate-500 uppercase">Mujeres</h3>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 border-l-4 border-l-pink-500">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase">Mujeres</h3>
                         <p id="total-mujeres" class="text-3xl font-black text-slate-800 mt-2">0</p>
                     </div>
                 </div>
                 
-                <div id="upload-status" class="hidden mt-4 p-3 text-center text-sm font-medium text-white rounded-lg shadow-sm transition-all no-print"></div>
+                <div id="upload-status" class="hidden mt-4 p-3 text-center text-sm font-medium text-white rounded-lg no-print"></div>
                 <div id="sim-warning" class="hidden mt-4 p-3 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-sm flex items-center gap-2 no-print">
-                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span><strong>Modo de Visualización (Supervisión):</strong> Para registrar nuevos datos, utilice el botón "Acceso Contratista".</span>
+                    <span><strong>Modo de Visualización:</strong> Para registrar datos, inicie sesión.</span>
                 </div>
             </section>
 
-            <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print">
+            <div class="mb-6 flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200 no-print">
                 <div class="w-full sm:w-auto flex-1 max-w-xs">
-                    <label for="report-date" class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de Consulta Operativa</label>
-                    <input type="date" id="report-date" class="block w-full rounded-lg border-slate-300 bg-slate-50 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-2 px-3">
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1">Fecha de Consulta Operativa</label>
+                    <input type="date" id="report-date" class="block w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3">
                 </div>
-                <button id="refresh-button" class="w-full sm:w-auto mt-0 sm:mt-5 bg-slate-100 text-slate-700 text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-200 border border-slate-300 transition">↻ Refrescar Datos</button>
+                <button id="refresh-button" class="w-full sm:w-auto bg-slate-100 text-slate-700 text-sm font-semibold py-2 px-4 rounded-lg hover:bg-slate-200 transition">↻ Refrescar Datos</button>
             </div>
 
             <div class="border-b border-slate-200 mb-6 bg-white rounded-t-xl px-2 pt-2 no-print">
-                <nav class="flex space-x-6 overflow-x-auto" aria-label="Tabs">
-                    <button id="btn-tab-diario" onclick="switchTab('diario')" class="whitespace-nowrap py-3 px-3 border-b-2 font-semibold text-sm transition-colors text-indigo-600 border-indigo-600">Control Diario Frentes</button>
-                    <button id="btn-tab-eventos" onclick="switchTab('eventos')" class="whitespace-nowrap py-3 px-3 border-b-2 border-transparent font-semibold text-sm text-slate-500 hover:text-slate-700 transition-colors">Bitácora Eventos</button>
-                    <button id="btn-tab-personal" onclick="switchTab('personal')" class="whitespace-nowrap py-3 px-3 border-b-2 border-transparent font-semibold text-sm text-slate-500 hover:text-slate-700 transition-colors">Base de Personal</button>
-                    <button id="btn-tab-estadisticas" onclick="switchTab('estadisticas')" class="whitespace-nowrap py-3 px-3 border-b-2 border-transparent font-semibold text-sm text-slate-500 hover:text-slate-700 transition-colors">Estadísticas SSOMA</button>
+                <nav class="flex space-x-6 overflow-x-auto">
+                    <button id="btn-tab-diario" onclick="switchTab('diario')" class="whitespace-nowrap py-3 px-3 border-b-2 font-semibold text-sm text-indigo-600 border-indigo-600">Control Frentes</button>
+                    <button id="btn-tab-eventos" onclick="switchTab('eventos')" class="whitespace-nowrap py-3 px-3 border-b-2 font-semibold text-sm text-slate-500 border-transparent">Bitácora Eventos</button>
+                    <button id="btn-tab-personal" onclick="switchTab('personal')" class="whitespace-nowrap py-3 px-3 border-b-2 font-semibold text-sm text-slate-500 border-transparent">Base de Personal</button>
+                    <button id="btn-tab-estadisticas" onclick="switchTab('estadisticas')" class="whitespace-nowrap py-3 px-3 border-b-2 font-semibold text-sm text-slate-500 border-transparent">Estadísticas SSOMA</button>
                 </nav>
             </div>
 
             <div id="tab-diario" class="space-y-6 block">
                 <div id="form-diario-btn" class="flex justify-end hidden no-print">
-                    <button onclick="toggleForm('form-diario-container', true)" class="bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg shadow-sm hover:bg-indigo-700 transition text-sm flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Registrar Nuevo Frente
-                    </button>
+                    <button onclick="toggleForm('form-diario-container', true)" class="bg-indigo-600 text-white font-semibold py-2 px-5 rounded-lg shadow-sm hover:bg-indigo-700 text-sm">Registrar Nuevo Frente</button>
                 </div>
                 
                 <div id="form-diario-container" class="hidden bg-white p-5 md:p-6 rounded-xl shadow-md border border-slate-200 no-print">
                     <form id="form-diario" class="space-y-6">
                         <div class="border-b border-slate-100 pb-5">
                             <h3 class="text-base font-bold text-slate-800 mb-4">1. Datos Generales del Frente</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div><label class="block text-xs font-semibold mb-1">Área / Sector</label><input type="text" id="area" required class="w-full rounded-lg border-slate-300 bg-slate-50 py-2 px-3 text-sm"></div>
+                                <div><label class="block text-xs font-semibold mb-1">Actividad Principal</label><input type="text" id="actividad" required class="w-full rounded-lg border-slate-300 bg-slate-50 py-2 px-3 text-sm"></div>
+                                <div><label class="block text-xs font-semibold mb-1">Capataz / Resp.</label><select id="capataz" required class="w-full rounded-lg border-slate-300 bg-slate-50 py-2 px-3 text-sm"></select></div>
                                 <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Área / Sector</label>
-                                    <input type="text" id="area" required placeholder="Ej: Nivel 1" class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Actividad Principal</label>
-                                    <input type="text" id="actividad" required placeholder="Ej: Vaciado" class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-indigo-500">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Capataz / Responsable</label>
-                                    <select id="capataz" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-indigo-500">
-                                        <option value="">Seleccionar</option>
-                                    </select>
-                                    <p class="text-[10px] text-slate-400 mt-1">*Solo referencial. Añádalo abajo a la cuadrilla para estadísticas.</p>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-slate-600 mb-1">Permiso de Trabajo</label>
-                                    <select id="permiso_tipo" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-indigo-500">
-                                        <option value="No aplica" selected>No aplica</option>
-                                        <option value="General">General</option>
-                                        <option value="Específico">Específico</option>
+                                    <label class="block text-xs font-semibold mb-1">Permiso Trabajo</label>
+                                    <select id="permiso_tipo" required class="w-full rounded-lg border-slate-300 bg-slate-50 py-2 px-3 text-sm">
+                                        <option value="No aplica">No aplica</option><option value="General">General</option><option value="Específico">Específico</option>
                                     </select>
                                 </div>
                             </div>
-                            
                             <div id="permiso_especifico_container" class="hidden mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                                <label class="block text-xs font-bold text-amber-800 mb-2">Seleccione Tipo de Permiso Específico:</label>
-                                <div class="flex flex-wrap gap-4">
-                                    <label class="inline-flex items-center"><input type="radio" name="permiso_esp_opt" value="Altura" class="text-amber-600 focus:ring-amber-500"><span class="ml-2 text-sm text-slate-700">Altura</span></label>
-                                    <label class="inline-flex items-center"><input type="radio" name="permiso_esp_opt" value="Caliente" class="text-amber-600 focus:ring-amber-500"><span class="ml-2 text-sm text-slate-700">Caliente</span></label>
-                                    <label class="inline-flex items-center"><input type="radio" name="permiso_esp_opt" value="Espacio confinado" class="text-amber-600 focus:ring-amber-500"><span class="ml-2 text-sm text-slate-700">Espacio confinado</span></label>
-                                    <label class="inline-flex items-center"><input type="radio" name="permiso_esp_opt" value="Eléctrico" class="text-amber-600 focus:ring-amber-500"><span class="ml-2 text-sm text-slate-700">Eléctrico</span></label>
-                                    <label class="inline-flex items-center"><input type="radio" name="permiso_esp_opt" value="Excavaciones" class="text-amber-600 focus:ring-amber-500"><span class="ml-2 text-sm text-slate-700">Excavaciones</span></label>
+                                <label class="block text-xs font-bold text-amber-800 mb-2">Seleccione Tipo de Permiso:</label>
+                                <div class="flex flex-wrap gap-4 text-sm">
+                                    <label><input type="radio" name="permiso_esp_opt" value="Altura"> Altura</label>
+                                    <label><input type="radio" name="permiso_esp_opt" value="Caliente"> Caliente</label>
+                                    <label><input type="radio" name="permiso_esp_opt" value="Espacio confinado"> Confinado</label>
+                                    <label><input type="radio" name="permiso_esp_opt" value="Eléctrico"> Eléctrico</label>
+                                    <label><input type="radio" name="permiso_esp_opt" value="Excavaciones"> Excavaciones</label>
                                 </div>
                             </div>
                         </div>
                         
                         <div>
-                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
-                                <h3 class="text-base font-bold text-slate-800">2. Asignación de Personal y EPPs</h3>
-                                <p class="text-xs text-slate-500">Añada a toda la cuadrilla para que ingresen a la estadística.</p>
-                            </div>
-                            
-                            <div class="bg-slate-50 p-4 md:p-5 rounded-xl border border-slate-200 mb-4">
-                                <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
-                                    <div class="lg:col-span-5 w-full">
-                                        <label class="block text-xs font-bold text-slate-600 mb-2">Buscar Trabajador (Base de Datos)</label>
-                                        <select id="worker_db_select" class="w-full rounded-lg border-slate-300 bg-white text-sm py-2.5 px-3 focus:ring-indigo-500 shadow-sm cursor-pointer">
-                                            <option value="">Cargando personal...</option>
-                                        </select>
+                            <h3 class="text-base font-bold text-slate-800 mb-3">2. Asignación de Cuadrilla (Obreros)</h3>
+                            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-end">
+                                <div class="lg:col-span-5 w-full">
+                                    <label class="block text-xs font-bold text-slate-600 mb-2">Buscar Trabajador</label>
+                                    <select id="worker_db_select" class="w-full rounded-lg border-slate-300 bg-white text-sm py-2.5 px-3"></select>
+                                </div>
+                                <div class="lg:col-span-5 w-full">
+                                    <label class="block text-xs font-bold text-slate-600 mb-2">Verificación EPPs</label>
+                                    <div class="flex flex-wrap gap-3 bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <label class="text-sm font-medium"><input type="checkbox" id="worker_epp_casco" checked> Casco</label>
+                                        <label class="text-sm font-medium"><input type="checkbox" id="worker_epp_botas" checked> Botas</label>
+                                        <label class="text-sm font-medium"><input type="checkbox" id="worker_epp_guantes" checked> Guantes</label>
+                                        <label class="text-sm font-medium"><input type="checkbox" id="worker_epp_lentes" checked> Lentes</label>
                                     </div>
-                                    <div class="lg:col-span-5 w-full">
-                                        <label class="block text-xs font-bold text-slate-600 mb-2">Verificación de EPPs Básicos</label>
-                                        <div class="flex flex-wrap gap-2 lg:gap-3 bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm justify-between lg:justify-start">
-                                            <label class="inline-flex items-center whitespace-nowrap cursor-pointer"><input type="checkbox" id="worker_epp_casco" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span class="ml-1.5 text-sm font-medium text-slate-700">Casco</span></label>
-                                            <label class="inline-flex items-center whitespace-nowrap cursor-pointer"><input type="checkbox" id="worker_epp_botas" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span class="ml-1.5 text-sm font-medium text-slate-700">Botas</span></label>
-                                            <label class="inline-flex items-center whitespace-nowrap cursor-pointer"><input type="checkbox" id="worker_epp_guantes" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span class="ml-1.5 text-sm font-medium text-slate-700">Guantes</span></label>
-                                            <label class="inline-flex items-center whitespace-nowrap cursor-pointer"><input type="checkbox" id="worker_epp_lentes" checked class="rounded text-indigo-600 focus:ring-indigo-500 w-4 h-4"><span class="ml-1.5 text-sm font-medium text-slate-700">Lentes</span></label>
-                                        </div>
-                                    </div>
-                                    <div class="lg:col-span-2 w-full">
-                                        <button type="button" id="add-worker-btn" class="w-full bg-indigo-100 text-indigo-800 hover:bg-indigo-200 border border-indigo-200 shadow-sm font-bold py-2.5 rounded-lg text-sm transition">Añadir ↓</button>
-                                    </div>
+                                </div>
+                                <div class="lg:col-span-2 w-full">
+                                    <button type="button" id="add-worker-btn" class="w-full bg-indigo-100 text-indigo-800 font-bold py-2.5 rounded-lg text-sm hover:bg-indigo-200">Añadir ↓</button>
                                 </div>
                             </div>
                             
@@ -210,16 +172,14 @@
                         </div>
 
                         <div class="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                             <button type="button" onclick="toggleForm('form-diario-container', false)" class="bg-white border border-slate-300 text-slate-700 font-medium py-2 px-5 rounded-lg hover:bg-slate-50 text-sm transition">Cancelar</button>
-                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg shadow-sm hover:bg-indigo-700 text-sm transition">Guardar Frente</button>
+                             <button type="button" onclick="toggleForm('form-diario-container', false)" class="bg-white border py-2 px-5 rounded-lg text-sm">Cancelar</button>
+                            <button type="submit" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Guardar Frente</button>
                         </div>
                     </form>
                 </div>
 
                 <div class="bg-white shadow-sm rounded-xl border border-slate-200">
-                    <div class="p-4 border-b border-slate-200 bg-slate-50">
-                        <h3 class="text-base font-bold text-slate-800">Reporte Detallado de la Jornada</h3>
-                    </div>
+                    <div class="p-4 border-b border-slate-200 bg-slate-50"><h3 class="text-base font-bold text-slate-800">Reporte de la Jornada</h3></div>
                     <div class="overflow-x-auto w-full">
                         <table class="w-full divide-y divide-slate-200 text-sm min-w-[800px]">
                             <thead class="bg-white">
@@ -229,7 +189,7 @@
                                     <th class="p-3 text-left font-bold text-slate-500">Capataz / Resp.</th>
                                     <th class="p-3 text-center font-bold text-slate-500">Obreros</th>
                                     <th class="p-3 text-left font-bold text-slate-500 w-1/3">Personal y EPP Status</th>
-                                    <th class="p-3 text-center font-bold text-slate-500">Permiso de Trabajo</th>
+                                    <th class="p-3 text-center font-bold text-slate-500">Permiso Trabajo</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-slate-100" id="report-table-body"></tbody>
@@ -240,51 +200,33 @@
 
             <div id="tab-eventos" class="hidden space-y-6">
                 <div id="form-evento-btn" class="flex justify-end hidden no-print">
-                    <button onclick="toggleForm('form-evento-container', true)" class="bg-emerald-600 text-white font-semibold py-2 px-5 rounded-lg shadow-sm hover:bg-emerald-700 transition text-sm flex items-center gap-2">
-                        Registrar Evento / Actividad
-                    </button>
+                    <button onclick="toggleForm('form-evento-container', true)" class="bg-emerald-600 text-white font-semibold py-2 px-5 rounded-lg text-sm">Registrar Evento</button>
                 </div>
 
                 <div id="form-evento-container" class="hidden bg-white p-5 md:p-6 rounded-xl shadow-md border border-slate-200 no-print">
-                    <h3 class="text-base font-bold text-slate-800 mb-4 border-b border-slate-100 pb-3">Registro en Bitácora</h3>
                     <form id="form-evento" class="space-y-5">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Clasificación del Evento</label>
-                                <select id="tipoEvento" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-emerald-500">
-                                    <option value="">Seleccione una opción...</option>
-                                    <option value="Permiso de Trabajo">Permiso de Trabajo</option>
-                                    <option value="Capacitación">Capacitación</option>
-                                    <option value="Inspección General">Inspección General</option>
-                                    <option value="Accidentes/Incidentes">Accidentes/Incidentes</option>
-                                    <option value="Otro">Otro</option>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Clasificación</label>
+                                <select id="tipoEvento" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3">
+                                    <option value="">Seleccione...</option><option value="Permiso de Trabajo">Permiso de Trabajo</option><option value="Capacitación">Capacitación</option><option value="Inspección General">Inspección General</option><option value="Accidentes/Incidentes">Accidentes/Incidentes</option><option value="Otro">Otro</option>
                                 </select>
                             </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-600 mb-1">Responsable del Registro</label>
-                                <input type="text" id="responsableEvento" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-emerald-500">
-                            </div>
+                            <div><label class="block text-xs font-semibold text-slate-600 mb-1">Responsable</label><input type="text" id="responsableEvento" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3"></div>
                         </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-600 mb-1">Descripción Detallada</label>
-                            <textarea id="descripcionEvento" rows="3" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3 focus:ring-emerald-500"></textarea>
+                        <div id="evento_opciones_dinamicas" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                            <div id="container_permiso_evento" class="hidden w-full"><label class="block text-xs font-bold mb-1">Detalle Permiso:</label><input type="text" id="detalle_permiso_evento" class="w-full rounded-lg border-slate-300 py-2 px-3 text-sm"></div>
+                            <div id="container_fecha_prog" class="hidden w-full"><label class="block text-xs font-bold mb-1">Fecha Programada:</label><input type="date" id="fechaProgramada" class="w-full rounded-lg border-slate-300 py-2 px-3 text-sm"></div>
                         </div>
-                        <div class="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                             <button type="button" onclick="toggleForm('form-evento-container', false)" class="bg-white border text-slate-700 py-2 px-5 rounded-lg text-sm">Cancelar</button>
-                            <button type="submit" class="bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Guardar en Bitácora</button>
-                        </div>
+                        <div><label class="block text-xs font-semibold mb-1">Descripción</label><textarea id="descripcionEvento" rows="3" required class="w-full rounded-lg border-slate-300 bg-slate-50 py-2 px-3 text-sm"></textarea></div>
+                        <div><label class="block text-xs font-semibold mb-1">Evidencia (Sube archivo a Drive)</label><input type="file" id="fotoEvento" class="block w-full text-sm text-slate-500 border rounded-lg bg-slate-50"></div>
+                        <div class="flex justify-end gap-3 pt-3"><button type="button" onclick="toggleForm('form-evento-container', false)" class="bg-white border py-2 px-5 rounded-lg text-sm">Cancelar</button><button type="submit" class="bg-emerald-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Guardar</button></div>
                     </form>
                 </div>
 
                 <div class="bg-white shadow-sm rounded-xl border border-slate-200">
-                    <div class="p-4 border-b border-slate-200 bg-slate-50">
-                        <h3 class="text-base font-bold text-slate-800">Bitácora de la Jornada</h3>
-                    </div>
-                    <div class="overflow-x-auto w-full">
-                        <table class="w-full divide-y divide-slate-200 text-sm min-w-[700px]">
-                            <tbody class="bg-white divide-y divide-slate-100" id="event-table-body"></tbody>
-                        </table>
-                    </div>
+                    <div class="p-4 border-b border-slate-200 bg-slate-50"><h3 class="text-base font-bold text-slate-800">Bitácora</h3></div>
+                    <div class="overflow-x-auto w-full"><table class="w-full divide-y divide-slate-200 text-sm min-w-[700px]"><tbody id="event-table-body"></tbody></table></div>
                 </div>
             </div>
 
@@ -298,20 +240,17 @@
                             <select id="db_genero" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3"><option value="H">Hombre</option><option value="M">Mujer</option></select>
                             <input type="date" id="db_nacimiento" required class="w-full rounded-lg border-slate-300 bg-slate-50 text-sm py-2 px-3">
                         </div>
-                        <div class="flex justify-end pt-2">
-                            <button type="submit" id="btn-submit-personal" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Guardar en Base de Datos</button>
-                        </div>
+                        <div class="flex justify-end pt-2"><button type="submit" id="btn-submit-personal" class="bg-indigo-600 text-white font-semibold py-2 px-6 rounded-lg text-sm">Guardar en Base de Datos</button></div>
                     </form>
                 </div>
-
                 <div class="bg-white shadow-sm rounded-xl border border-slate-200">
                     <div class="p-4 bg-slate-50 border-b border-slate-200"><h4 class="font-bold text-slate-800 text-sm">Directorio Activo (<span id="total_db">0</span> registrados)</h4></div>
-                    <div class="overflow-x-auto w-full"><table class="w-full divide-y divide-slate-200 text-sm min-w-[600px]"><tbody id="db-table-body" class="bg-white divide-y divide-slate-100"></tbody></table></div>
+                    <div class="overflow-x-auto w-full"><table class="w-full divide-y divide-slate-200 text-sm min-w-[600px]"><tbody id="db-table-body"></tbody></table></div>
                 </div>
             </div>
 
             <div id="tab-estadisticas" class="hidden space-y-6">
-                <div class="bg-white p-6 shadow-sm rounded-xl border border-slate-200 text-center"><p class="text-slate-500">Métricas se calculan automáticamente al registrar datos en los frentes activos.</p></div>
+                <div class="bg-white p-6 shadow-sm rounded-xl border border-slate-200 text-center"><p class="text-slate-500">Métricas se calculan automáticamente al registrar datos.</p></div>
             </div>
         </div> 
     </div> 
@@ -320,7 +259,7 @@
         <div class="container mx-auto px-4 text-center">
             <p class="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-1">Desarrollado por ZACARIAS ORTEGA</p>
             <p class="text-[10px] md:text-xs text-slate-500">
-                para el proyecto: Construcción Hospital de Segundo Nivel Isaías <br>
+                para el proyecto: Construcción Hospital de Segundo Nivel Isaías.<br>
                 &copy; 2026 Gestión Integral SSOMA | Oruro, Bolivia.
             </p>
         </div>
@@ -328,9 +267,7 @@
 
     <script>
         // =========================================================================================
-        // ▼▼▼ CONFIGURACIÓN DE ENLACE GOOGLE APPS SCRIPT ▼▼▼
-        // =========================================================================================
-        const G_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwqWFUC96BHTvRa6IeRyyYEV43LNjH5wYsgc6qpMLFFCPx-dFYFSlAou3FNtQzlwZ_Y/exec";
+        const G_APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw_IOK_3PDUmIGD3matGCF-XmSg8UvA6k0PEaVqbEObHhgPO4PIbb0v0wecrgxo7LD-/exec";
         // =========================================================================================
         
         let isSimulation = G_APP_SCRIPT_URL === "PEGUE_SU_URL_DE_APPS_SCRIPT_AQUI" || window.location.protocol === 'blob:';
@@ -340,15 +277,17 @@
         let trabajadoresEnFormulario = [];
         let dbTrabajadores = []; 
         let simFrentes = []; 
+        let simEventos = [];
 
         function showNotification(msg, type = 'info') {
             const el = document.getElementById('upload-status');
+            if(!el) return;
             el.className = `mt-4 p-3 text-center text-sm font-medium text-white rounded-lg transition-all no-print ${type==='error'?'bg-red-500':(type==='success'?'bg-emerald-500':'bg-indigo-500')}`;
             el.textContent = msg; el.classList.remove('hidden');
             setTimeout(() => el.classList.add('hidden'), 4000);
         }
 
-        // CONTROL ACCESO PIN
+        // --- AUTENTICACIÓN ---
         document.getElementById('btn-login-contratista').addEventListener('click', () => {
             if (modoEdicionActivo) {
                 modoEdicionActivo = false;
@@ -371,12 +310,11 @@
                 document.getElementById('btn-login-contratista').classList.replace('bg-slate-800', 'bg-emerald-600');
                 document.getElementById('login-text').textContent = '🔓 Cerrar Sesión';
                 document.getElementById('sim-warning').classList.replace('bg-amber-50', 'bg-emerald-50');
-                closeLoginModal();
-                showNotification("Acceso concedido", "success");
+                closeLoginModal(); showNotification("Acceso concedido", "success");
             } else {
                 document.getElementById('pin-error').classList.remove('hidden');
             }
-        }
+        };
 
         function switchTab(tab) {
             ['diario', 'eventos', 'personal', 'estadisticas'].forEach(t => {
@@ -384,7 +322,7 @@
                 document.getElementById('btn-tab-' + t).classList.toggle('text-indigo-600', t === tab);
                 document.getElementById('btn-tab-' + t).classList.toggle('border-indigo-600', t === tab);
             });
-            if(tab === 'diario') loadDailyReports();
+            if(tab === 'diario' || tab === 'eventos') loadDataForCurrentDate();
             if(tab === 'personal') loadTrabajadores();
         }
 
@@ -395,30 +333,45 @@
 
         async function loadDataForCurrentDate() {
             currentReportDate = document.getElementById('report-date').value;
-            loadDailyReports(); 
+            loadDailyReports(); loadEventLog();
         }
 
-        // ALGORITMO RASTREADOR DE DATOS
-        function parsearCuadrilla(rawJSON) {
-            if (!rawJSON) return [];
-            if (Array.isArray(rawJSON)) return rawJSON;
+        function extractJSONInmune(raw) {
+            if (!raw) return [];
+            if (Array.isArray(raw)) return raw;
+            if (typeof raw === 'object') return [raw];
             try {
-                let match = String(rawJSON).match(/\[\s*\{[\s\S]*\}\s*\]/);
-                if (match) {
-                    let parsed = JSON.parse(match[0]);
-                    return (typeof parsed === 'string') ? JSON.parse(parsed) : parsed;
+                let s = String(raw).trim();
+                // Destruir comillas extra que Sheets inyecta a veces
+                if (s.startsWith('"') && s.endsWith('"')) {
+                    s = s.substring(1, s.length - 1).replace(/\\"/g, '"');
                 }
-            } catch(e) { console.error("Error interpretando JSON", e); }
+                if(s === '""' || s === "''") return [];
+                
+                // Encontrar los corchetes que envuelven el array
+                const primerCorchete = s.indexOf('[');
+                const ultimoCorchete = s.lastIndexOf(']');
+                
+                if (primerCorchete !== -1 && ultimoCorchete !== -1) {
+                    let arrayStr = s.substring(primerCorchete, ultimoCorchete + 1);
+                    let obj = JSON.parse(arrayStr);
+                    // Doble validación
+                    if (typeof obj === 'string') obj = JSON.parse(obj);
+                    return Array.isArray(obj) ? obj : [];
+                }
+            } catch (e) {
+                console.error("Fallo al interpretar obreros:", e, raw);
+            }
             return [];
         }
 
-        // CARGAR REPORTES DIARIOS (ANTI CACHÉ)
         async function loadDailyReports() {
             const tBody = document.getElementById('report-table-body');
-            tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">Cargando datos frescos...</td></tr>';
+            tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-500 font-semibold">Descargando datos...</td></tr>';
             try {
-                let fData = simFrentes;
+                let fData = simFrentes.filter(f => f.fecha === currentReportDate);
                 if(!isSimulation) {
+                    // Cache Buster
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`, { cache: "no-store" });
                     const data = await res.json(); 
                     fData = data.frentes || [];
@@ -428,53 +381,64 @@
                 let tPers = 0, tHom = 0, tMuj = 0;
 
                 if (fData.length === 0) {
-                    tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400">No hay frentes registrados hoy.</td></tr>';
+                    tBody.innerHTML = '<tr><td colspan="6" class="p-6 text-center text-slate-400 bg-slate-50">No hay frentes registrados para esta fecha.</td></tr>';
                     document.getElementById('total-personal').textContent = 0; return;
                 }
 
                 fData.forEach(f => {
-                    let raw = f.trabajadores_json;
-                    if (!raw || (typeof raw === 'string' && !raw.includes('[{'))) {
-                        for (let key in f) {
-                            if (typeof f[key] === 'string' && f[key].includes('[{') && f[key].includes('}]')) {
-                                raw = f[key];
-                                break;
-                            }
-                        }
-                    }
-
-                    let trabs = parsearCuadrilla(raw);
-                    let trHtml = '<span class="text-xs text-slate-400 italic">Sin personal registrado</span>';
+                    // Extraer los trabajadores usando el extractor inmune
+                    let trabs = extractJSONInmune(f.trabajadores_json);
                     
+                    let trHtml = '';
                     if (trabs.length > 0) {
                         trHtml = '<ul class="list-disc list-inside text-[11px] space-y-1">';
                         trabs.forEach(t => {
                             tPers++; if(t.genero==='H') tHom++; else tMuj++;
-                            let epps = [t.casco?'C':'', t.botas?'B':'', t.guantes?'G':'', t.lentes?'L':''].filter(x=>x).join(',');
-                            let col = (epps.length===7) ? 'text-emerald-700' : 'text-red-600 font-bold';
-                            trHtml += `<li class="${col}">${t.nombre} [${epps}]</li>`;
+                            let epps = [];
+                            if(t.casco) epps.push('C'); if(t.botas) epps.push('B');
+                            if(t.guantes) epps.push('G'); if(t.lentes) epps.push('L');
+                            let strEpp = epps.join(',');
+                            let col = (epps.length === 4) ? 'text-emerald-700' : 'text-red-600 font-bold';
+                            trHtml += `<li class="${col}">${t.nombre} [${strEpp}]</li>`;
                         });
                         trHtml += '</ul>';
+                    } else {
+                        trHtml = '<span class="text-xs text-red-500 font-bold">Sin personal en cuadrilla</span>';
                     }
 
-                    const row = document.createElement('tr'); row.className = "border-b border-slate-100 hover:bg-slate-50/50";
-                    row.innerHTML = `<td class="p-3 font-medium text-slate-800">${f.area || '-'}</td><td class="p-3 text-slate-600">${f.actividad || '-'}</td><td class="p-3 text-slate-700">${f.capataz || '-'}</td><td class="p-3 text-center font-bold">${trabs.length}</td><td class="p-3">${trHtml}</td><td class="p-3 text-center text-xs"><span class="bg-slate-100 border px-2 py-1 rounded">${f.permiso || 'No aplica'}</span></td>`;
+                    const perStr = f.permiso_detalle ? `${f.permiso}<br><span class="text-[10px] font-bold text-amber-600">${f.permiso_detalle}</span>` : f.permiso;
+
+                    const row = document.createElement('tr'); row.className = "border-b border-slate-100 hover:bg-slate-50";
+                    row.innerHTML = `
+                        <td class="p-3 font-medium text-slate-800">${f.area}</td>
+                        <td class="p-3 text-slate-600">${f.actividad}</td>
+                        <td class="p-3 text-slate-700">${f.capataz}</td>
+                        <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${trabs.length}</span></td>
+                        <td class="p-3">${trHtml}</td>
+                        <td class="p-3 text-center text-xs"><span class="bg-slate-100 border px-2 py-1 rounded block">${perStr}</span></td>
+                    `;
                     tBody.appendChild(row);
                 });
                 
                 document.getElementById('total-personal').textContent = tPers;
                 document.getElementById('total-hombres').textContent = tHom;
                 document.getElementById('total-mujeres').textContent = tMuj;
-            } catch (e) { tBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Error de sincronización de red.</td></tr>`; }
+            } catch (e) { 
+                tBody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500 font-bold">Error de sincronización de datos. Revise su red.</td></tr>`; 
+            }
         }
+
+        document.getElementById('permiso_tipo').addEventListener('change', (e) => {
+            document.getElementById('permiso_especifico_container').classList.toggle('hidden', e.target.value !== 'Específico');
+        });
 
         document.getElementById('add-worker-btn').addEventListener('click', () => {
             const sel = document.getElementById('worker_db_select');
-            if (!sel.value) return showNotification("Seleccione un trabajador de la lista", 'error');
+            if (!sel.value) return showNotification("Seleccione un trabajador", 'error');
             const w = dbTrabajadores[sel.value];
             if (trabajadoresEnFormulario.some(t => t.ci === w.ci)) return showNotification("Ya está en la cuadrilla", 'error');
             
-            trabajadoresEnFormulario.push({ ci: w.ci, nombre: w.nombre, genero: w.genero,
+            trabajadoresEnFormulario.push({ ci: w.ci, nombre: w.nombre, genero: w.genero, edad: w.edad, grupo_etario: w.grupo_etario,
                 casco: document.getElementById('worker_epp_casco').checked, botas: document.getElementById('worker_epp_botas').checked,
                 guantes: document.getElementById('worker_epp_guantes').checked, lentes: document.getElementById('worker_epp_lentes').checked
             });
@@ -483,74 +447,144 @@
 
         function renderWorkers() {
             const tb = document.getElementById('worker-form-table-body'); tb.innerHTML = '';
-            if(!trabajadoresEnFormulario.length) return tb.innerHTML = '<tr><td colspan="7" class="p-3 text-center text-xs text-slate-400">Cuadrilla vacía. Añada personal.</td></tr>';
+            if(!trabajadoresEnFormulario.length) return tb.innerHTML = '<tr><td colspan="7" class="p-3 text-center text-xs text-slate-400">Cuadrilla vacía.</td></tr>';
             trabajadoresEnFormulario.forEach((t, i) => {
                 const c = (v) => v ? '<span class="text-emerald-500 font-bold">✓</span>' : '<span class="text-red-500 font-bold">X</span>';
-                tb.innerHTML += `<tr class="border-b border-slate-100"><td class="p-2 font-medium">${t.nombre}</td><td class="p-2 text-center">${t.genero}</td><td class="p-2 text-center">${c(t.casco)}</td><td class="p-2 text-center">${c(t.botas)}</td><td class="p-2 text-center">${c(t.guantes)}</td><td class="p-2 text-center">${c(t.lentes)}</td><td class="p-2 text-center"><button type="button" onclick="trabajadoresEnFormulario.splice(${i},1); renderWorkers()" class="text-red-500 hover:underline">Quitar</button></td></tr>`;
+                tb.innerHTML += `<tr class="border-b border-slate-50"><td class="p-2 font-medium">${t.nombre}</td><td class="p-2 text-center">${t.genero}</td><td class="p-2 text-center">${c(t.casco)}</td><td class="p-2 text-center">${c(t.botas)}</td><td class="p-2 text-center">${c(t.guantes)}</td><td class="p-2 text-center">${c(t.lentes)}</td><td class="p-2 text-center"><button type="button" onclick="trabajadoresEnFormulario.splice(${i},1); renderWorkers()" class="text-red-500 bg-red-50 px-2 py-1 rounded text-xs hover:underline">Quitar</button></td></tr>`;
             });
         }
 
-        // GUARDADO CON RETRASO SEGURO
         document.getElementById('form-diario').addEventListener('submit', async (e) => {
             e.preventDefault();
-            if(!trabajadoresEnFormulario.length) return showNotification("Agregue personal a la cuadrilla", 'error');
+            if(!trabajadoresEnFormulario.length) return showNotification("No puede guardar sin cuadrilla", 'error');
+            
+            let p_tipo = document.getElementById('permiso_tipo').value;
+            let p_det = p_tipo === 'Específico' ? (document.querySelector('input[name="permiso_esp_opt"]:checked')?.value || '') : '';
+            if(p_tipo === 'Específico' && !p_det) return showNotification("Seleccione un permiso específico", "error");
+
+            const selCap = document.getElementById('capataz');
+            const nCap = selCap.options[selCap.selectedIndex]?.text.split(' (')[0] || '';
+
             const btn = e.target.querySelector('button[type="submit"]'); btn.disabled=true;
             try {
                 const payload = {
                     action: 'addFrente', reportDate: document.getElementById('report-date').value,
                     area: document.getElementById('area').value, actividad: document.getElementById('actividad').value,
-                    capataz: document.getElementById('capataz').options[document.getElementById('capataz').selectedIndex]?.text.split(' (')[0] || '',
-                    permiso: document.getElementById('permiso_tipo').value, permiso_detalle: '',
+                    capataz: nCap, permiso: p_tipo, permiso_detalle: p_det,
                     trabajadores_json: JSON.stringify(trabajadoresEnFormulario)
                 };
 
                 if (isSimulation) simFrentes.push({fecha: payload.reportDate, ...payload});
-                else await fetch(G_APP_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }); 
+                else {
+                    await fetch(G_APP_SCRIPT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(payload)
+                    }); 
+                }
                 
                 e.target.reset(); trabajadoresEnFormulario=[]; renderWorkers();
+                document.getElementById('permiso_especifico_container').classList.add('hidden');
                 toggleForm('form-diario-container', false);
-                showNotification("Guardado en Google Sheets con Éxito", "success"); 
+                showNotification("Guardado Correctamente. Sincronizando...", "success"); 
                 
-                // SINCRONIZACIÓN AUTOMÁTICA DETECTABLE
-                setTimeout(loadDailyReports, 1500); 
+                // Forzar pausa vital para que Google Sheets procese el texto
+                setTimeout(() => { loadDailyReports(); }, 1800);
 
-            } catch (err) { showNotification("Error guardando reporte.", "error"); } finally { btn.disabled=false; }
+            } catch (err) { showNotification("Fallo de Red.", "error"); } finally { btn.disabled=false; }
         });
 
+        document.getElementById('tipoEvento').addEventListener('change', (e) => {
+            const val = e.target.value;
+            const container = document.getElementById('evento_opciones_dinamicas');
+            const pCont = document.getElementById('container_permiso_evento');
+            const fCont = document.getElementById('container_fecha_prog');
+            
+            pCont.classList.add('hidden'); fCont.classList.add('hidden'); container.classList.add('hidden');
+            if(val === 'Permiso de Trabajo') { container.classList.remove('hidden'); pCont.classList.remove('hidden'); }
+            else if(['Capacitación','Inspección General','Otro'].includes(val)) { container.classList.remove('hidden'); fCont.classList.remove('hidden'); }
+        });
+
+        const getBase64 = (file) => new Promise((resolve, reject) => {
+            if(!file) return resolve(null);
+            if(file.size > 50*1024*1024) return reject("Máximo 50MB");
+            const r = new FileReader(); r.readAsDataURL(file);
+            r.onload = () => resolve({ data: r.result, mime: file.type, name: file.name });
+            r.onerror = error => reject(error);
+        });
+
+        document.getElementById('form-evento').addEventListener('submit', async (e) => {
+            e.preventDefault(); const t = document.getElementById('tipoEvento').value;
+            const btn = e.target.querySelector('button[type="submit"]'); btn.disabled = true;
+            try {
+                let extra = t === 'Permiso de Trabajo' ? document.getElementById('detalle_permiso_evento').value : document.getElementById('fechaProgramada').value;
+                const fileObj = await getBase64(document.getElementById('fotoEvento').files[0]);
+
+                const payload = { action: 'addEvento', reportDate: document.getElementById('report-date').value, timestamp: new Date().toISOString(),
+                    tipo: t, descripcion: document.getElementById('descripcionEvento').value, responsable: document.getElementById('responsableEvento').value,
+                    fechaProgramada: extra, fileData: fileObj ? fileObj.data : "", fileName: fileObj ? fileObj.name : "", mimeType: fileObj ? fileObj.mime : ""
+                };
+
+                if(isSimulation) simEventos.push(payload); 
+                else await fetch(G_APP_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+                
+                e.target.reset(); document.getElementById('evento_opciones_dinamicas').classList.add('hidden');
+                toggleForm('form-evento-container', false); showNotification("Evento Guardado", "success"); setTimeout(loadEventLog, 1500);
+            } catch (err) { showNotification(err, 'error'); } finally { btn.disabled = false; }
+        });
+
+        function loadEventLog() {
+            const tb = document.getElementById('event-table-body');
+            let evs = simEventos.filter(e => e.reportDate === currentReportDate);
+            tb.innerHTML = '';
+            if(!evs.length) return tb.innerHTML = '<tr><td colspan="4" class="p-6 text-center text-slate-400">Sin bitácora hoy.</td></tr>';
+            evs.forEach(e => {
+                tb.innerHTML += `<tr class="border-b border-slate-100"><td class="p-3 font-bold">${e.tipo}</td><td class="p-3 text-xs">${e.descripcion}</td><td class="p-3 text-xs">${e.responsable}</td><td class="p-3 text-center text-xs">${e.fileName?'📎':'-'}</td></tr>`;
+            });
+        }
+
+        function calcEdad(fecha) { if(!fecha) return 0; const diff = Date.now() - new Date(fecha).getTime(); return Math.abs(new Date(diff).getUTCFullYear() - 1970); }
+        function getEtario(edad) { if(edad<20) return "< 20"; if(edad<=29) return "20-29"; if(edad<=39) return "30-39"; if(edad<=49) return "40-49"; if(edad<=59) return "50-59"; return "60+"; }
+
         async function loadTrabajadores() {
+            const tb = document.getElementById('db-table-body');
             if(!isSimulation) {
                 try {
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getTrabajadores&t=${Date.now()}`, { cache: "no-store" });
                     const data = await res.json(); dbTrabajadores = data.trabajadores || [];
-                } catch(e) { console.log("Error de red cargando base", e); }
+                } catch(e) {}
             }
             document.getElementById('total_db').textContent = dbTrabajadores.length;
-            const tb = document.getElementById('db-table-body'); tb.innerHTML = '';
-            document.getElementById('worker_db_select').innerHTML = '<option value="">-- Buscar Trabajador --</option>';
-            document.getElementById('capataz').innerHTML = '<option value="">-- Seleccionar --</option>';
+            tb.innerHTML = ''; document.getElementById('worker_db_select').innerHTML = '<option value="">-- Buscar --</option>'; document.getElementById('capataz').innerHTML = '<option value="">-- Seleccionar --</option>';
             
             dbTrabajadores.forEach((t, i) => {
-                tb.innerHTML += `<tr class="border-b border-slate-100"><td class="p-3 font-medium">${t.ci}</td><td class="p-3">${t.nombre}</td><td class="p-3 text-center">${t.genero}</td><td class="p-3 text-center">${t.edad || '-'}</td><td class="p-3 text-center">${t.grupo_etario || '-'}</td></tr>`;
+                tb.innerHTML += `<tr class="border-b border-slate-100"><td class="p-3">${t.ci}</td><td class="p-3 font-medium">${t.nombre}</td><td class="p-3 text-center">${t.genero}</td><td class="p-3 text-center">${t.edad||'-'}</td><td class="p-3 text-center">${t.grupo_etario||'-'}</td></tr>`;
                 document.getElementById('worker_db_select').innerHTML += `<option value="${i}">${t.nombre} (${t.ci})</option>`;
                 document.getElementById('capataz').innerHTML += `<option value="${i}">${t.nombre} (${t.ci})</option>`;
             });
         }
 
         document.getElementById('form-personal').addEventListener('submit', async (e) => {
-            e.preventDefault(); const btn = document.getElementById('btn-submit-personal'); btn.disabled=true;
+            e.preventDefault(); const ci = document.getElementById('db_ci').value;
+            if(dbTrabajadores.some(t=>t.ci===ci)) return showNotification("CI Registrado", "error");
+            const btn = document.getElementById('btn-submit-personal'); btn.disabled=true;
             try {
-                const payload = { action:'addTrabajador', timestamp: new Date().toISOString(), ci: document.getElementById('db_ci').value, nombre: document.getElementById('db_nombre').value, genero: document.getElementById('db_genero').value, fechaNacimiento: document.getElementById('db_nacimiento').value, edad: calcEdad(document.getElementById('db_nacimiento').value), grupo_etario: getEtario(calcEdad(document.getElementById('db_nacimiento').value)) };
-                if(isSimulation) dbTrabajadores.push(payload);
-                else await fetch(G_APP_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-                e.target.reset(); showNotification("Trabajador Empadronado", "success"); 
-                setTimeout(loadTrabajadores, 1500);
-            } catch(e) { showNotification("Error guardando.", "error"); } finally { btn.disabled=false; }
+                const eC = calcEdad(document.getElementById('db_nacimiento').value);
+                const payload = { action:'addTrabajador', timestamp: new Date().toISOString(), ci, nombre: document.getElementById('db_nombre').value, genero: document.getElementById('db_genero').value, fechaNacimiento: document.getElementById('db_nacimiento').value, edad: eC, grupo_etario: getEtario(eC) };
+                
+                if(isSimulation) dbTrabajadores.push(payload); 
+                else await fetch(G_APP_SCRIPT_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+                
+                e.target.reset(); showNotification("Personal Guardado", "success"); setTimeout(loadTrabajadores, 1500);
+            } catch(e) {} finally { btn.disabled=false; }
         });
 
         function exportToPDF() {
             const element = document.getElementById('pdf-content-area');
             element.classList.add('pdf-mode'); 
-            html2pdf().set({ margin: 0.3, filename: `Reporte_SSOMA_${currentReportDate}.pdf`, jsPDF: { format: 'letter', orientation: 'portrait' } }).from(element).save().then(() => element.classList.remove('pdf-mode'));
+            ['tab-personal', 'tab-estadisticas'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+            ['tab-diario', 'tab-eventos'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'block'; });
+            html2pdf().set({ margin: 0.3, filename: `Reporte_${currentReportDate}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } }).from(element).save().then(() => { element.classList.remove('pdf-mode'); switchTab('diario'); });
         }
 
         document.addEventListener('DOMContentLoaded', () => {
