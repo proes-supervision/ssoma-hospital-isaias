@@ -337,42 +337,35 @@
         }
 
         // =========================================================================
-        // MOTOR DE EXTRACCIÓN INMUNE A LA CORRUPCIÓN DE FORMATO DE GOOGLE SHEETS
+        // EL NUEVO EXTRACTOR DEFINITIVO (INMUNE A FORMATOS DE SHEETS)
         // =========================================================================
-        function robustWorkerParse(fRow) {
-            // 1. Rastreo Inteligente: Buscar en todas las columnas de la fila recibida
-            let raw = fRow.trabajadores_json;
-            if (!raw || String(raw).indexOf('[{') === -1) {
-                for (let k in fRow) {
-                    if (String(fRow[k]).indexOf('[{') !== -1) {
-                        raw = fRow[k]; break;
-                    }
-                }
-            }
-            if (!raw) return { list: [], errorStr: null };
-            if (Array.isArray(raw)) return { list: raw, errorStr: null };
+        function parsearCuadrilla(rawJSON) {
+            if (!rawJSON) return [];
+            if (Array.isArray(rawJSON)) return rawJSON;
 
-            // 2. Extracción de Fuerza Bruta
-            let s = String(raw).trim();
-            let i1 = s.indexOf('[{');
-            let i2 = s.lastIndexOf('}]');
-            
-            if (i1 !== -1 && i2 !== -1) {
-                let json = s.substring(i1, i2 + 2);
+            // 1. Limpieza radical de caracteres que corrompen el JSON
+            let str = String(rawJSON).trim();
+            str = str.replace(/^"|"$/g, '');   // Quitar comillas del principio y final
+            str = str.replace(/\\"/g, '"');    // Quitar barras invertidas
+            str = str.replace(/""/g, '"');     // Arreglar comillas dobles juntas
+            str = str.replace(/”|“|’|‘/g, '"'); // Cambiar comillas tipográficas por normales
+
+            try {
+                // Intento 1: Análisis Nativo
+                let parsed = JSON.parse(str);
+                if (typeof parsed === 'string') parsed = JSON.parse(parsed); // Doble stringificado
+                if (Array.isArray(parsed)) return parsed;
+            } catch (e1) {
                 try {
-                    // Intento A: Normal
-                    return { list: JSON.parse(json), errorStr: null };
-                } catch(e) {
-                    try {
-                        // Intento B: Si Sheets borró o arruinó las comillas, eval() forzará la lectura como JavaScript puro
-                        let arrayObj = new Function("return " + json)();
-                        if (Array.isArray(arrayObj)) return { list: arrayObj, errorStr: null };
-                    } catch(e2) {
-                        return { list: [], errorStr: json }; // Devolver el texto roto para mostrarlo en pantalla
+                    // Intento 2: Extracción con Expresiones Regulares (Buscamos los corchetes)
+                    let match = str.match(/\[.*\]/s);
+                    if (match) {
+                        let parsed2 = JSON.parse(match[0]);
+                        if (Array.isArray(parsed2)) return parsed2;
                     }
-                }
+                } catch (e2) {}
             }
-            return { list: [], errorStr: s }; 
+            return []; // Si no es un array válido, devuelve vacío
         }
 
         async function loadDailyReports() {
@@ -381,7 +374,6 @@
             try {
                 let fData = simFrentes.filter(f => f.fecha === currentReportDate);
                 if(!isSimulation) {
-                    // Cache Buster: &t=Date.now() obliga al navegador móvil a soltar el caché viejo
                     const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentes&date=${currentReportDate}&t=${Date.now()}`, { cache: "no-store" });
                     const data = await res.json(); 
                     fData = data.frentes || [];
@@ -396,29 +388,38 @@
                 }
 
                 fData.forEach(f => {
-                    // Llamar al motor extractor inmune
-                    let parsedData = robustWorkerParse(f);
-                    let trabs = parsedData.list;
-                    let rawError = parsedData.errorStr;
-                    
+                    // 1. Encontrar el texto sin importar en qué columna esté
+                    let raw = f.trabajadores_json;
+                    if (!raw || !String(raw).includes('[')) {
+                        for (let k in f) {
+                            if (f[k] && String(f[k]).includes('[')) {
+                                raw = f[k]; break;
+                            }
+                        }
+                    }
+
+                    // 2. Extraer los obreros con el nuevo código definitivo
+                    let trabs = parsearCuadrilla(raw);
                     let trHtml = '';
-                    if (trabs && trabs.length > 0) {
+
+                    if (trabs.length > 0) {
                         trHtml = '<ul class="list-disc list-inside text-[11px] space-y-1">';
                         trabs.forEach(t => {
                             tPers++; if(t.genero==='H') tHom++; else tMuj++;
-                            let epps = [];
-                            if(t.casco) epps.push('C'); if(t.botas) epps.push('B');
-                            if(t.guantes) epps.push('G'); if(t.lentes) epps.push('L');
-                            let strEpp = epps.join(',');
-                            let col = (epps.length === 4) ? 'text-emerald-700' : 'text-red-600 font-bold';
-                            trHtml += `<li class="${col}">${t.nombre} [${strEpp}]</li>`;
+                            let epps = [t.casco?'C':'', t.botas?'B':'', t.guantes?'G':'', t.lentes?'L':''].filter(x=>x).join(',');
+                            let allEpps = t.casco && t.botas && t.guantes && t.lentes;
+                            let col = allEpps ? 'text-emerald-700' : 'text-red-600 font-bold';
+                            trHtml += `<li class="${col}">${t.nombre} [${epps}]</li>`;
                         });
                         trHtml += '</ul>';
-                    } else if (rawError) {
-                        // SISTEMA ANTI-CIEGOS: Si falla, te mostrará la basura que mandó Google Sheets
-                        trHtml = `<span class="text-[10px] text-red-500 font-bold break-all">Error. Sheets devolvió: ${rawError.substring(0, 40)}...</span>`;
                     } else {
-                        trHtml = '<span class="text-xs text-red-500 font-bold">Sin personal en cuadrilla</span>';
+                        // SISTEMA DE DIAGNÓSTICO: Si no hay obreros, mostramos el error exacto
+                        if (raw && String(raw).length > 5) {
+                            trHtml = `<div class="text-[10px] text-red-500 font-bold mb-1">❌ Error leyendo celda de Sheets:</div>
+                                      <div class="text-[8px] text-slate-400 bg-slate-100 p-1 rounded break-all">${String(raw).substring(0,60)}...</div>`;
+                        } else {
+                            trHtml = '<span class="text-xs text-red-500 font-bold">Columna vacía o no recibida</span>';
+                        }
                     }
 
                     const perStr = f.permiso_detalle ? `${f.permiso}<br><span class="text-[10px] font-bold text-amber-600">${f.permiso_detalle}</span>` : f.permiso;
@@ -428,7 +429,7 @@
                         <td class="p-3 font-medium text-slate-800">${f.area || '-'}</td>
                         <td class="p-3 text-slate-600">${f.actividad || '-'}</td>
                         <td class="p-3 text-slate-700">${f.capataz || '-'}</td>
-                        <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${trabs ? trabs.length : 0}</span></td>
+                        <td class="p-3 text-center"><span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">${trabs.length}</span></td>
                         <td class="p-3">${trHtml}</td>
                         <td class="p-3 text-center text-xs"><span class="bg-slate-100 border px-2 py-1 rounded block">${perStr}</span></td>
                     `;
@@ -504,8 +505,8 @@
                 
                 showNotification("Guardando y Sincronizando datos...", "success"); 
                 
-                // ESPERA DE 2.5 SEGUNDOS (2500ms) PARA ASEGURAR QUE GOOGLE TERMINE DE GRABAR LA CELDA
-                setTimeout(() => { loadDailyReports(); }, 2500);
+                // ESPERA DE 2 SEGUNDOS PARA EVITAR QUE SE CARGUE EL CACHÉ VACÍO
+                setTimeout(() => { loadDailyReports(); }, 2000);
 
             } catch (err) { showNotification("Fallo de Red.", "error"); } finally { btn.disabled=false; }
         });
@@ -594,6 +595,43 @@
                 e.target.reset(); showNotification("Personal Guardado", "success"); setTimeout(loadTrabajadores, 1500);
             } catch(e) {} finally { btn.disabled=false; }
         });
+
+        // ESTADÍSTICAS
+        async function loadEstadisticas() {
+            const s = document.getElementById('stats-start')?.value;
+            const e = document.getElementById('stats-end')?.value;
+            if(!s||!e) return;
+            let fr = [];
+            if(isSimulation) { fr = simFrentes.filter(f => f.fecha >= s && f.fecha <= e); }
+            else {
+                const res = await fetch(`${G_APP_SCRIPT_URL}?action=getFrentesRango&start=${s}&end=${e}&t=${Date.now()}`);
+                const data = await res.json(); fr = data.frentes || [];
+            }
+            let map = new Map(), h=0, m=0, et = {};
+            fr.forEach(f => {
+                let raw = f.trabajadores_json;
+                if (!raw || !String(raw).includes('[')) {
+                    for (let k in f) { if (f[k] && String(f[k]).includes('[')) { raw = f[k]; break; } }
+                }
+                let tr = parsearCuadrilla(raw);
+                tr.forEach(t => { if(t.ci && !map.has(t.ci)) map.set(t.ci, t); });
+            });
+            Array.from(map.values()).forEach(t => {
+                if(t.genero==='H') h++; if(t.genero==='M') m++;
+                const dbT = dbTrabajadores.find(d => d.ci === t.ci);
+                const gE = dbT ? getEtario(calcEdad(dbT.fechaNacimiento)) : t.grupo_etario;
+                et[gE] = (et[gE]||0)+1;
+            });
+            document.getElementById('stat-frentes').textContent = fr.length;
+            document.getElementById('stat-unicos').textContent = map.size;
+            document.getElementById('stat-hombres-rep').textContent = h; document.getElementById('stat-mujeres-rep').textContent = m;
+            const cont = document.getElementById('stat-etarios-container'); cont.innerHTML = '';
+            if(!map.size) return cont.innerHTML = '<p class="text-slate-400 italic text-center py-8">Sin datos en este rango de fechas.</p>';
+            Object.keys(et).sort().forEach(k => {
+                const pct = Math.round((et[k]/map.size)*100);
+                cont.innerHTML += `<div class="mb-3"><div class="flex justify-between text-[11px] mb-1 font-semibold text-slate-600"><span>${k}</span><span>${et[k]} (${pct}%)</span></div><div class="w-full bg-slate-100 rounded-full h-2"><div class="bg-indigo-500 h-2 rounded-full" style="width:${pct}%"></div></div></div>`;
+            });
+        }
 
         function exportToPDF() {
             const element = document.getElementById('pdf-content-area');
